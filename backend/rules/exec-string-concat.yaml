@@ -1,0 +1,19 @@
+rules:
+  - id: cyberlens.exec-string-concat
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      A shell command is built by joining strings, so anyone who controls the joined value can run
+      their own commands (command injection). Use `execFile('cmd', [args])`, which does not use a shell.
+    pattern-either:
+      - pattern: exec("..." + $X, ...)
+      - pattern: exec(`...${$X}...`, ...)
+      - pattern: execSync("..." + $X, ...)
+      - pattern: execSync(`...${$X}...`, ...)
+      - pattern: child_process.exec("..." + $X, ...)
+      - pattern: child_process.exec(`...${$X}...`, ...)
+    metadata:
+      category: security
+      cwe: ["CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      confidence: HIGH

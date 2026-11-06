@@ -1,0 +1,22 @@
+rules:
+  - id: cyberlens.jwt-without-expiry
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      This JWT is signed without an expiry, so a stolen token works forever. Pass
+      `{ expiresIn: '1h' }` (or similar) as the third argument.
+    patterns:
+      - pattern-either:
+          - pattern: $JWT.sign($PAYLOAD, $SECRET)
+          - patterns:
+              - pattern: $JWT.sign($PAYLOAD, $SECRET, {...})
+              - pattern-not: "$JWT.sign($PAYLOAD, $SECRET, {..., expiresIn: $X, ...})"
+      - pattern-not: "$JWT.sign({..., exp: $X, ...}, ...)"
+      - metavariable-regex:
+          metavariable: $JWT
+          regex: ^(jwt|jsonwebtoken)$
+    metadata:
+      category: security
+      cwe: ["CWE-613: Insufficient Session Expiration"]
+      owasp: ["A07:2025 - Authentication Failures"]
+      confidence: MEDIUM

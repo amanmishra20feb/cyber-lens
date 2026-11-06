@@ -1,0 +1,17 @@
+rules:
+  - id: cyberlens.sql-string-concat
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      This SQL query is built by joining strings, so anyone who controls the joined value can change
+      the query (SQL injection). Pass values as parameters instead: `db.query('... WHERE id = ?', [id])`.
+    pattern-either:
+      - pattern: $DB.query("..." + $X, ...)
+      - pattern: $DB.query(`...${$X}...`, ...)
+      - pattern: $DB.execute("..." + $X, ...)
+      - pattern: $DB.execute(`...${$X}...`, ...)
+    metadata:
+      category: security
+      cwe: ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"]
+      owasp: ["A05:2025 - Injection"]
+      confidence: MEDIUM

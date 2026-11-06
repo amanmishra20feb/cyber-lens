@@ -1,0 +1,8 @@
+**/node_modules
+**/.env
+**/dist
+.git
+cyberlens-goat
+backend/test
+backend/scripts
+frontend/test

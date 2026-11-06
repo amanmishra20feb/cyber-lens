@@ -1,0 +1,15 @@
+rules:
+  - id: cyberlens.weak-hash
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      MD5 and SHA-1 are broken: attackers can find collisions and crack hashes quickly. For passwords use
+      bcrypt, scrypt or argon2. For integrity or signatures use SHA-256 or stronger.
+    pattern-either:
+      - pattern: $C.createHash("md5")
+      - pattern: $C.createHash("sha1")
+    metadata:
+      category: security
+      cwe: ["CWE-328: Use of Weak Hash"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      confidence: MEDIUM

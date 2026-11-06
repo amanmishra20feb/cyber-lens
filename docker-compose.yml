@@ -1,0 +1,22 @@
+# Local stack: Postgres + the app (API, frontend and engines). Run: docker compose up --build, then open http://localhost:4000
+# Needs backend/.env with JWT_SECRET (DATABASE_URL is set here).
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: cyberlens
+      POSTGRES_USER: cyberlens
+      POSTGRES_HOST_AUTH_METHOD: trust # local only: the database port is not published, so only the api container can reach it
+    volumes: [db-data:/var/lib/postgresql]
+    healthcheck: { test: ["CMD", "pg_isready", "-U", "cyberlens"], interval: 2s, retries: 15 }
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgres://cyberlens@db:5432/cyberlens
+      NODE_ENV: development # plain-http cookies on localhost
+      LOW_MEMORY: "1" # engines one after another; remove on a host with 2 GB or more
+    ports: ["4000:4000"]
+    depends_on: { db: { condition: service_healthy } }
+volumes:
+  db-data:

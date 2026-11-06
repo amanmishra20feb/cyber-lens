@@ -1,0 +1,16 @@
+rules:
+  - id: cyberlens.empty-catch
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      This catch block does nothing with the error. The failure is silently ignored, so the
+      request can hang or the app can continue in a broken state. Log the error and return a
+      clear response, or let it reach the error handler.
+    pattern-either:
+      - pattern: try { ... } catch ($E) {}
+      - pattern: try { ... } catch {}
+    metadata:
+      category: security
+      cwe: ["CWE-390: Detection of Error Condition Without Action"]
+      owasp: ["A10:2025 - Mishandling of Exceptional Conditions"]
+      confidence: HIGH

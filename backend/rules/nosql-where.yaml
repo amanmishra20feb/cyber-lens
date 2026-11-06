@@ -1,0 +1,17 @@
+rules:
+  - id: cyberlens.nosql-where
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      `$where` runs JavaScript inside the database, so a value from the request can run code there
+      (NoSQL injection). Query with normal operators such as `{ name: value }` instead.
+    patterns:
+      - pattern-either:
+          - pattern: "{..., $where: $X, ...}"
+          - pattern: "{..., '$where': $X, ...}"
+      - focus-metavariable: $X
+    metadata:
+      category: security
+      cwe: ["CWE-943: Improper Neutralization of Special Elements in Data Query Logic"]
+      owasp: ["A05:2025 - Injection"]
+      confidence: HIGH

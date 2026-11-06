@@ -1,0 +1,17 @@
+rules:
+  - id: cyberlens.stack-trace-in-response
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      The error's stack trace is sent to the client. It reveals file paths, library versions and
+      code structure to an attacker. Log the stack on the server and send a generic message.
+    pattern-either:
+      - pattern: $RES.send(<... $ERR.stack ...>)
+      - pattern: $RES.json(<... $ERR.stack ...>)
+      - pattern: $RES.end(<... $ERR.stack ...>)
+      - pattern: $RES.write(<... $ERR.stack ...>)
+    metadata:
+      category: security
+      cwe: ["CWE-209: Generation of Error Message Containing Sensitive Information"]
+      owasp: ["A10:2025 - Mishandling of Exceptional Conditions"]
+      confidence: HIGH

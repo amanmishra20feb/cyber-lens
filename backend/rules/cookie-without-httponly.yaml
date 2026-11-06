@@ -1,0 +1,19 @@
+rules:
+  - id: cyberlens.cookie-without-httponly
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      This cookie is set without `httpOnly: true`, so any script on the page (including an XSS
+      payload) can read it. Set `httpOnly: true`, `secure: true` and `sameSite`.
+    pattern-either:
+      - pattern: $RES.cookie($NAME, $VALUE)
+      - patterns:
+          - pattern: $RES.cookie($NAME, $VALUE, {...})
+          - pattern-not: "$RES.cookie($NAME, $VALUE, {..., httpOnly: true, ...})"
+          # shortcut: options spread in from a variable (`{ ...base, maxAge }`) are not followed, so they are not reported; follow them with taint rules if this proves too lenient
+          - pattern-not: "$RES.cookie($NAME, $VALUE, {..., ...$OPTS, ...})"
+    metadata:
+      category: security
+      cwe: ["CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      confidence: MEDIUM

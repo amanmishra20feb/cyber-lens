@@ -1,0 +1,11 @@
+{
+  "name": "cyberlens-goat",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "4.21.2",
+    "jsonwebtoken": "8.5.1",
+    "lodash": "4.17.15",
+    "mysql": "2.18.1"
+  }
+}

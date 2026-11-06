@@ -1,0 +1,19 @@
+rules:
+  - id: cyberlens.math-random-token
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      `Math.random()` is predictable, so a token or ID built from it can be guessed. Use
+      `crypto.randomBytes(32).toString('hex')` or `crypto.randomUUID()`.
+    pattern-either:
+      - pattern: Math.random().toString(...)
+      - patterns:
+          - pattern: $T = <... Math.random() ...>
+          - metavariable-regex:
+              metavariable: $T
+              regex: (?i).*(token|secret|password|nonce|session|otp|apikey).*
+    metadata:
+      category: security
+      cwe: ["CWE-338: Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)"]
+      owasp: ["A04:2025 - Cryptographic Failures"]
+      confidence: MEDIUM
