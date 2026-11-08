@@ -57,7 +57,7 @@ export function ScansPage() {
       <PageTitle>Scans</PageTitle>
       <h1 className="text-[28px] font-medium">Scans</h1>
       <NewScan />
-      <section className="mt-12" aria-labelledby="history">
+      <section className="reveal mt-12" aria-labelledby="history">
         <h2 id="history" className="text-[22px] font-medium">History</h2>
         {isPending && <p className="mt-4 text-muted">Loading scans…</p>}
         {error && <p role="alert" className="mt-4 text-sev-critical">{error.message}</p>}

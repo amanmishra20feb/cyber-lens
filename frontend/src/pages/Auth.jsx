@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { useMe } from '../auth.jsx';
-import { Mark } from '../components/Mark.jsx';
+import { Logo } from '../components/Logo.jsx';
 import { PageTitle } from '../components/PageTitle.jsx';
 
 const field = 'mt-2 block h-10 w-full rounded-lg border border-rule bg-surface px-3 text-[15px] text-ink placeholder:text-muted';
@@ -36,13 +36,14 @@ export function AuthPage({ mode }) {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[400px] flex-col justify-center px-4 py-12">
-      <div className="mb-10 flex items-center gap-3 text-[26px] font-medium">
-        <Mark size={40} /> Cyberlens
+    <main className="page-in mx-auto flex min-h-dvh max-w-[400px] flex-col justify-center px-4 py-12">
+      {/* shifted left so the name, not the icon, lines up with the centred text */}
+      <div className="mb-10 flex -translate-x-5.5 justify-center">
+        <Logo className="h-13" />
       </div>
       <PageTitle>{signup ? 'Create your account' : 'Sign in'}</PageTitle>
-      <h1 className="text-[28px] font-medium">{signup ? 'Create your account' : 'Sign in'}</h1>
-      <p className="mt-1 text-muted">{signup ? 'Scan public GitHub repos for security problems.' : 'Welcome back.'}</p>
+      <h1 className="text-center text-[22px] font-medium">{signup ? 'Create your account' : 'Sign in'}</h1>
+      <p className="mt-1 text-center text-muted">{signup ? 'Scan public GitHub repos for security problems.' : 'Welcome back.'}</p>
       <form onSubmit={submit} className="mt-8 space-y-4">
         {signup && (
           <label className="block font-medium">
@@ -64,7 +65,7 @@ export function AuthPage({ mode }) {
           {busy ? (signup ? 'Creating account…' : 'Signing in…') : signup ? 'Create account' : 'Sign in'}
         </button>
       </form>
-      <p className="mt-6 text-muted">
+      <p className="mt-6 text-center text-muted">
         {signup ? 'Already have an account? ' : 'New to Cyberlens? '}
         <Link to={signup ? '/login' : '/signup'} className="text-ink underline underline-offset-4">
           {signup ? 'Sign in' : 'Create an account'}

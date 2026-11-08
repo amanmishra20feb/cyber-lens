@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { ENGINE_NAMES, OWASP_2025, SEVERITIES, STATUS_LABEL } from '../format.js';
 import { FindingDrawer } from './FindingDrawer.jsx';
 import { Severity } from './Severity.jsx';
@@ -10,7 +10,7 @@ const FILTERS = {
 };
 const NO_FILTER = { severity: '', engine: '', owasp: '' };
 // Rows highlight as one rounded pill. The divider is a pseudo-element, because a border would curve at the rounded corners.
-const cell = 'relative py-3 align-top before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-rule group-hover:bg-raised group-hover:before:opacity-0 group-focus-within:bg-raised group-focus-within:before:opacity-0';
+const cell = 'relative py-3 align-top transition-colors before:transition-opacity before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-rule group-hover:bg-raised group-hover:before:opacity-0 group-focus-within:bg-raised group-focus-within:before:opacity-0';
 
 // The whole list is already loaded, so filtering happens here. Tab counts follow the filters.
 export function Findings({ findings, file, onFile }) {
@@ -19,6 +19,22 @@ export function Findings({ findings, file, onFile }) {
   const [openId, setOpenId] = useState(null);
   const openAt = useRef(0); // row position when the drawer opened
   const table = useRef(null);
+  const tabs = useRef(null);
+
+  // the highlight is measured because tab widths change with their counts
+  useLayoutEffect(() => {
+    const pill = tabs.current.firstChild;
+    const place = () => {
+      const active = tabs.current?.querySelector('[aria-pressed=true]');
+      if (!active) return;
+      pill.style.width = `${active.offsetWidth}px`;
+      pill.style.transform = `translateX(${active.offsetLeft}px)`;
+    };
+    place();
+    void pill.offsetWidth; // so the first position does not animate
+    pill.classList.add('tab-slide');
+    document.fonts.ready.then(place);
+  });
 
   const matching = findings.filter((f) => (!file || f.file === file) && Object.entries(FILTERS).every(([k, d]) => !filters[k] || d.values(f).includes(filters[k])));
   const rows = matching.filter((f) => f.status === tab);
@@ -53,9 +69,10 @@ export function Findings({ findings, file, onFile }) {
   return (
     <>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div className="flex gap-1" role="group" aria-label="Status">
+        <div ref={tabs} className="relative flex gap-1" role="group" aria-label="Status">
+          <span aria-hidden="true" className="absolute inset-y-0 left-0 rounded-lg bg-control" />
           {Object.entries(STATUS_LABEL).map(([value, label]) => (
-            <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`h-9 rounded-lg px-3 ${tab === value ? 'bg-control font-medium text-ink' : 'text-muted hover:text-ink'}`}>
+            <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`relative h-9 rounded-lg px-3 ${tab === value ? 'font-medium text-ink' : 'text-muted hover:text-ink'}`}>
               {label} <span className="num">{count(value)}</span>
             </button>
           ))}

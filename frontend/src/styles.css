@@ -75,6 +75,62 @@
   .num {
     font-variant-numeric: tabular-nums;
   }
+  button, a, input, select, textarea, label {
+    transition-property: background-color, border-color, color, opacity, transform;
+    transition-duration: var(--duration-quick);
+    transition-timing-function: var(--ease-smooth-out);
+  }
+}
+
+/* Motion tokens */
+:root {
+  --duration-micro: 80ms;
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-slow: 400ms;
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --rise: 8px;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(var(--rise)); }
+}
+
+.pop { transition: opacity var(--duration-fast) var(--ease-smooth-out), transform var(--duration-fast) var(--ease-smooth-out); }
+@starting-style {
+  .pop { opacity: 0; transform: scale(0.97); }
+}
+
+.tab-slide { transition: transform var(--duration-fast) var(--ease-smooth-out), width var(--duration-fast) var(--ease-smooth-out); }
+
+/* display and overlay keep the dialog visible while it slides out */
+.drawer, .drawer::backdrop {
+  transition: transform var(--duration-quick) var(--ease-smooth-out), opacity var(--duration-quick) var(--ease-smooth-out), display var(--duration-quick) allow-discrete, overlay var(--duration-quick) allow-discrete;
+}
+.drawer { transform: translateX(100%); }
+.drawer::backdrop { opacity: 0; }
+.drawer[open] { transform: none; transition-duration: var(--duration-fast); }
+.drawer[open]::backdrop { opacity: 1; transition-duration: var(--duration-fast); }
+@starting-style {
+  .drawer[open] { transform: translateX(100%); }
+  .drawer[open]::backdrop { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+  button:not(:disabled):active, a:active, label:has(> input[type='radio']):active {
+    transform: scale(0.98);
+    transition-duration: var(--duration-micro);
+  }
+  .page-in { animation: rise var(--duration-slow) var(--ease-smooth-out) backwards; }
+  /* browsers without this just show the section */
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0 entry 64px; /* fixed, so tall sections do not stay faded */
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -83,3 +139,8 @@
     animation-duration: 0.01ms !important;
   }
 }
+
+/* two logo files, one per theme */
+.logo-dark { display: none; }
+:root[data-theme='dark'] .logo-light { display: none; }
+:root[data-theme='dark'] .logo-dark { display: inline-block; }

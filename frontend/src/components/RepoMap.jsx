@@ -40,9 +40,9 @@ export function RepoMap({ files, fileCount, findings, selected, onSelect }) {
         {tiles.map((t) => {
           const box = { left: `${(t.x / W) * 100}%`, top: `${(t.y / H) * 100}%`, width: `${(t.w / W) * 100}%`, height: `${(t.h / H) * 100}%` };
           const dim = selected && selected !== t.path ? 'opacity-35' : '';
-          if (t.count === 0) return <div key={t.path} aria-hidden="true" title={`${t.path}: ${t.loc} lines`} style={box} className={`absolute p-px ${dim}`}><div className="h-full w-full bg-control" /></div>;
+          if (t.count === 0) return <div key={t.path} aria-hidden="true" title={`${t.path}: ${t.loc} lines`} style={box} className={`absolute p-px transition-opacity ${dim}`}><div className="h-full w-full bg-control" /></div>;
           return (
-            <div key={t.path} style={box} className={`absolute p-px ${dim}`}>
+            <div key={t.path} style={box} className={`absolute p-px transition-opacity ${dim}`}>
               <button
                 type="button"
                 data-tile
@@ -52,7 +52,7 @@ export function RepoMap({ files, fileCount, findings, selected, onSelect }) {
                 title={`${t.path}: ${plural(t.count)}, worst ${t.worst}`}
                 onFocus={() => setActive(t.path)}
                 onClick={() => onSelect(selected === t.path ? null : t.path)}
-                className={`flex h-full w-full flex-col items-start overflow-hidden p-1.5 text-left text-[12px] leading-tight text-bg focus-visible:outline-offset-[-2px] ${FILL[t.worst]} ${selected === t.path ? 'outline outline-2 -outline-offset-2 outline-ink' : ''}`}
+                className={`flex h-full w-full flex-col items-start overflow-hidden p-1.5 text-left text-[12px] leading-tight text-bg hover:opacity-85 focus-visible:outline-offset-[-2px] ${FILL[t.worst]} ${selected === t.path ? 'outline outline-2 -outline-offset-2 outline-ink' : ''}`}
               >
                 {t.w >= 5 && t.h >= 5 && <span className="num font-medium">{t.count}</span>}
                 {t.w >= 16 && t.h >= 8 && <span className="block w-full truncate">{baseName(t.path)}</span>}
