@@ -23,8 +23,8 @@ function Snippet({ finding }) {
   );
 }
 
-// Everything about one finding, plus triage. A native modal <dialog> gives focus trapping, Esc to close
-// and focus return to the row for free. All repo-derived text (title, message, paths, code) is rendered as text only.
+// Finding details and triage in a native <dialog>, which handles focus, Esc and focus return.
+// Text from the repo is only ever rendered as plain text.
 export function FindingDrawer({ finding: f, onClose }) {
   const dialog = useRef(null);
   const queryClient = useQueryClient();
@@ -43,7 +43,7 @@ export function FindingDrawer({ finding: f, onClose }) {
     <dialog
       ref={dialog}
       onClose={onClose}
-      onClick={(e) => e.target === dialog.current && close()} // the dialog has no padding of its own, so only the backdrop can be the target
+      onClick={(e) => e.target === dialog.current && close()} // a click on the backdrop closes it
       aria-labelledby="finding-title"
       className="m-0 ml-auto h-dvh max-h-none w-full max-w-[600px] bg-bg p-0 text-ink backdrop:bg-black/40 md:border-l md:border-rule"
     >

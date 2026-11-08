@@ -1,4 +1,4 @@
-// The Cyberlens mark: a lens over a 2x2 board of tiles.
+// Cyberlens logo: a lens over four tiles
 export function Mark({ size = 24 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">

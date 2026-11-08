@@ -6,12 +6,13 @@ import { USER_COLUMNS } from '../models.js';
 import { COOKIE, cookieOptions, setSession, requireUser } from '../auth.js';
 
 const router = Router();
-const limit = (max, keyGenerator) => rateLimit({ windowMs: 60_000, limit: max, keyGenerator, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Too many attempts. Wait a minute and try again.' } });
-// Login is limited per IP and email, so a classroom behind one IP is not locked out together.
-const loginLimit = limit(5, (req) => `${ipKeyGenerator(req.ip)}|${String(req.body?.email ?? '').toLowerCase()}`);
-const signupLimit = limit(20);
-const admins = (process.env.ADMIN_EMAILS ?? '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean);
-const DUMMY_HASH = bcrypt.hashSync('timing-equaliser', 12); // compare against this when the email is unknown
+const limiter = (max, keyGenerator) =>
+  rateLimit({ windowMs: 60_000, limit: max, keyGenerator, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: 'Too many attempts. Wait a minute and try again.' } });
+// keyed on IP + email, so one shared college network doesn't lock everyone out
+const loginLimit = limiter(5, (req) => `${ipKeyGenerator(req.ip)}|${String(req.body?.email ?? '').toLowerCase()}`);
+const signupLimit = limiter(20);
+// compared when the email doesn't exist, so that case takes as long as a wrong password
+const DUMMY_HASH = bcrypt.hashSync('timing-equaliser', 12);
 
 router.post('/signup', signupLimit, async (req, res) => {
   const { email, password, name } = req.body ?? {};
@@ -25,11 +26,11 @@ router.post('/signup', signupLimit, async (req, res) => {
   let user;
   try {
     [user] = await sql(
-      `INSERT INTO users (email, name, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING ${USER_COLUMNS}`,
-      [clean, name.trim(), await bcrypt.hash(password, 12), admins.includes(clean) ? 'admin' : 'free'],
+      `INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING ${USER_COLUMNS}`,
+      [clean, name.trim(), await bcrypt.hash(password, 12)],
     );
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ error: 'An account with this email already exists. Sign in instead.' }); // unique email
+    if (e.code === '23505') return res.status(409).json({ error: 'An account with this email already exists. Sign in instead.' });
     throw e;
   }
   setSession(res, user);
@@ -41,7 +42,7 @@ router.post('/login', loginLimit, async (req, res) => {
   const [found] = await sql(`SELECT ${USER_COLUMNS}, password_hash FROM users WHERE email = $1`, [String(email ?? '').trim().toLowerCase()]);
   const ok = await bcrypt.compare(String(password ?? ''), found?.passwordHash ?? DUMMY_HASH);
   if (!found || !ok) return res.status(401).json({ error: 'Email or password is wrong.' });
-  const { passwordHash, ...user } = found; // the hash never leaves this function
+  const { passwordHash, ...user } = found;
   setSession(res, user);
   res.json({ user });
 });

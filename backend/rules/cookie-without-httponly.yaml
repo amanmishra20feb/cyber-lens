@@ -10,7 +10,7 @@ rules:
       - patterns:
           - pattern: $RES.cookie($NAME, $VALUE, {...})
           - pattern-not: "$RES.cookie($NAME, $VALUE, {..., httpOnly: true, ...})"
-          # shortcut: options spread in from a variable (`{ ...base, maxAge }`) are not followed, so they are not reported; follow them with taint rules if this proves too lenient
+          # TODO: options spread in from another object ({ ...base }) are not followed, so those cookies are not checked
           - pattern-not: "$RES.cookie($NAME, $VALUE, {..., ...$OPTS, ...})"
     metadata:
       category: security

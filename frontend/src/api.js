@@ -1,4 +1,4 @@
-// Every call goes to /api on the same origin; the httpOnly cookie rides along automatically.
+// same origin, so the login cookie is sent automatically
 export async function api(path, { body, method = body ? 'POST' : 'GET' } = {}) {
   const res = await fetch(`/api${path}`, {
     method,

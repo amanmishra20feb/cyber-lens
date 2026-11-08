@@ -33,4 +33,3 @@ export const duration = (a, b) => {
 export const IGNORE_REASON_TEXT = { false_positive: 'False positive', acceptable_risk: 'Acceptable risk', no_time: 'No time to fix' };
 export const STATUS_LABEL = { open: 'Open', fixed: 'Fixed', ignored: 'Ignored' };
 
-export const PLAN_NAME = { free: 'Free', pro: 'Pro', admin: 'Admin' };

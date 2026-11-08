@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 
-// shortcut: in-process only, so SSE clients must hit the same API instance that runs the scan; use Redis pub/sub if the API ever scales to more than one instance
+// TODO: in-process only, so live progress needs a single API instance (Redis pub/sub otherwise)
 const bus = new EventEmitter().setMaxListeners(0);
 
 export const publish = (scanId) => bus.emit(String(scanId));

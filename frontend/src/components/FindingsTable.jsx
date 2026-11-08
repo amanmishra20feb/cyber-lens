@@ -9,12 +9,10 @@ const FILTERS = {
   owasp: { label: 'OWASP', values: (f) => f.owasp, text: (v) => `${v} ${OWASP_2025[v] ?? ''}` },
 };
 const NO_FILTER = { severity: '', engine: '', owasp: '' };
-// One rounded highlight per row: each cell paints the hover/focus tone and the first and last cell round the ends. The row rule hides under it.
-// The row rule is a pseudo-element, not a border: a border on a rounded cell curves up at the ends. It stops 12px short of the row's edges (the corner radius) and hides under the highlight.
+// Rows highlight as one rounded pill. The divider is a pseudo-element, because a border would curve at the rounded corners.
 const cell = 'relative py-3 align-top before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-rule group-hover:bg-raised group-hover:before:opacity-0 group-focus-within:bg-raised group-focus-within:before:opacity-0';
 
-// Findings for one scan: Open / Fixed / Ignored tabs, three filters, arrow keys between rows, Enter opens the drawer.
-// All filtering happens here because the full list is already loaded; tab counts follow the filters so they match the rows.
+// The whole list is already loaded, so filtering happens here. Tab counts follow the filters.
 export function Findings({ findings, file, onFile }) {
   const [tab, setTab] = useState('open');
   const [filters, setFilters] = useState(NO_FILTER);
@@ -34,7 +32,7 @@ export function Findings({ findings, file, onFile }) {
     return order ? order.filter((v) => all.includes(v)) : all.sort();
   };
   const openFinding = (id, index) => { openAt.current = index; setOpenId(id); };
-  // The dialog returns focus to the row that opened it, but triage can remove that row from this tab; then land on the row now in its place.
+  // triage can move the row out of this tab, so focus whichever row is now in its place
   const closeDrawer = () => {
     setOpenId(null);
     requestAnimationFrame(() => {
@@ -43,7 +41,7 @@ export function Findings({ findings, file, onFile }) {
       buttons?.[Math.min(openAt.current, buttons.length - 1)]?.focus();
     });
   };
-  // ArrowUp/ArrowDown move between rows; the row buttons are ordinary buttons, so Enter and Tab need no extra code.
+  // up/down arrows move between rows; Enter already works because each row is a button
   const move = (e) => {
     const step = { ArrowDown: 1, ArrowUp: -1 }[e.key];
     if (!step) return;

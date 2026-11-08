@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Navigate, useLocation } from 'react-router';
 import { api } from './api.js';
 
-// null = signed out. A 401 is an answer, not an error.
+// null means signed out
 export const useMe = () =>
   useQuery({
     queryKey: ['me'],

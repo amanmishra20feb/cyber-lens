@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useMe } from '../auth.jsx';
 import { PageTitle } from '../components/PageTitle.jsx';
 
-const PLAN_TEXT = { free: 'Free (3 scans a day)', pro: 'Pro (25 scans a day)', admin: 'Admin (no daily limit)' };
-
 const THEMES = [
   { value: 'light', label: 'Light', note: 'Best on a projector.' },
   { value: 'dark', label: 'Dark', note: 'Easier on the eyes at night.' },
@@ -54,7 +52,7 @@ export function SettingsPage() {
         </Section>
         <Section title="Account" description="Your sign-in details. Changing them is not available yet.">
           <dl className="space-y-3">
-            {[['Name', user?.name], ['Email', user?.email], ['Plan', PLAN_TEXT[user?.role]]].map(([k, v]) => (
+            {[['Name', user?.name], ['Email', user?.email]].map(([k, v]) => (
               <div key={k} className="flex gap-4">
                 <dt className="w-20 shrink-0 text-muted">{k}</dt>
                 <dd className="min-w-0 break-words">{v}</dd>

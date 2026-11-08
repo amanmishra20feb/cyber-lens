@@ -1,14 +1,13 @@
-// Scans ../cyberlens-goat and checks every planted bug was found and no safe line was flagged.
-// Writes benchmark.json, which the report and the landing page read. Usage: npm run benchmark
+// npm run benchmark: scans backend/goat and checks the results against the
+// "// VULN: CWE-x Axx" and "// SAFE" markers in its code. Writes ../benchmark.json.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanDirectory } from '../src/scanner/scan.js';
 
-const GOAT = fileURLToPath(new URL('../../cyberlens-goat', import.meta.url));
+const GOAT = fileURLToPath(new URL('../goat', import.meta.url));
 const OUT = fileURLToPath(new URL('../../benchmark.json', import.meta.url));
 
-// Read the markers from the source: "// VULN: CWE-89 A05" or "// SAFE".
 async function markers() {
   const vulns = [];
   const safe = [];
@@ -28,7 +27,8 @@ async function markers() {
 const { vulns, safe, deps } = await markers();
 const result = await scanDirectory(GOAT);
 const { findings } = result;
-const near = (f, m) => f.file === m.file && f.line != null && m.line >= f.line && m.line <= (f.endLine ?? f.line); // the finding must cover the marked line
+// a hit only counts if the finding's lines cover the marked line
+const near = (f, m) => f.file === m.file && f.line != null && m.line >= f.line && m.line <= (f.endLine ?? f.line);
 
 const found = vulns.filter((v) => findings.some((f) => near(f, v)));
 const missed = vulns.filter((v) => !found.includes(v));

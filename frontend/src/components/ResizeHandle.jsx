@@ -1,9 +1,8 @@
 export const SIDEBAR = { min: 224, max: 420, initial: 240, step: 16 };
 export const clampWidth = (width) => Math.min(SIDEBAR.max, Math.max(SIDEBAR.min, Math.round(width)));
 
-// Drag handle on the sidebar's right edge (desktop only), following the "window splitter" pattern:
-// a focusable separator that arrow keys can move (Shift = 3x), Home/End jump to the limits, Enter or double-click resets.
-// Pointer capture keeps the drag going when the cursor leaves the thin handle. The sidebar starts at x=0, so clientX is its width.
+// Sidebar resize handle (desktop only). Arrow keys move it (Shift = faster), Home/End jump to the limits,
+// Enter or double-click resets. The sidebar starts at x = 0, so clientX is the new width.
 export function ResizeHandle({ width, onChange }) {
   const key = (e) => {
     const step = (e.shiftKey ? 3 : 1) * SIDEBAR.step;

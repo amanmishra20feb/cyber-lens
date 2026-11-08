@@ -9,12 +9,14 @@ import { parseRepo } from '../validate.js';
 const RULES = fileURLToPath(new URL('../../rules', import.meta.url));
 const SANDBOXES = process.env.SANDBOX_DIR || path.join(os.tmpdir(), 'cyberlens-sandboxes');
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build']);
+const MAX_REPO_KB = 200_000;
 const MAX_MAP_FILES = 1500;
-// LOW_MEMORY=1 is for hosts with about 512 MB: engines run one after another and the worker scans one repo at a time.
-export const LOW_MEMORY = process.env.LOW_MEMORY === '1';
-const MAX_FINDINGS = 2000;
+const MAX_FINDINGS = 2000; // TODO: page the findings if a real repo ever goes past this
 
-// A message safe to show the user; anything else becomes a generic failure.
+// For small hosts (~512 MB): run the engines one after another and one scan at a time.
+export const LOW_MEMORY = process.env.LOW_MEMORY === '1';
+
+// Errors whose message is safe to show the user.
 export class ScanError extends Error {}
 
 const ENGINES = [
@@ -22,7 +24,7 @@ const ENGINES = [
     name: 'semgrep',
     timeout: 300_000,
     okCodes: [0, 1],
-    // --jobs 1 keeps Semgrep's memory near 270 MB instead of 470 MB (same findings, about 0.4 s slower on NodeGoat); --max-memory stops it taking the whole host.
+    // --jobs 1 uses about half the memory for the same results
     args: (dir) => ['scan', '--config', 'p/owasp-top-ten', '--config', 'p/secrets', '--config', RULES, '--json', '--metrics', 'off', '--quiet', '--timeout', '30', '--jobs', '1', '--max-memory', LOW_MEMORY ? '350' : '700', dir],
     parse: parseSemgrep,
   },
@@ -37,7 +39,7 @@ const ENGINES = [
     name: 'osv',
     cmd: 'osv-scanner',
     timeout: 120_000,
-    okCodes: [0, 1, 128], // 1 = vulnerabilities found, 128 = no lockfiles found
+    okCodes: [0, 1, 128], // 1 = vulnerabilities found, 128 = no lockfile in the repo
     args: (dir) => ['scan', 'source', '-r', '--format', 'json', dir],
     parse: (json, dir) => (json ? parseOsv(json, dir) : []),
   },
@@ -55,11 +57,11 @@ async function runEngine(engine, dir, onEngine, signal) {
     findings = [];
     status = { name: engine.name, ok: false, error: e.message.slice(0, 300), ms: Date.now() - started };
   }
-  await onEngine?.(status); // outside the try: a failure to save progress is not an engine failure
+  await onEngine?.(status);
   return { status, findings };
 }
 
-// Every regular file (no symlinks) with its line count, largest first, for the Repo Map.
+// Text files under 1 MB with their line counts, biggest first. Feeds the repo map.
 async function mapFiles(dir) {
   const files = [];
   async function walk(relDir) {
@@ -82,7 +84,7 @@ async function mapFiles(dir) {
   return { files: counted.slice(0, MAX_MAP_FILES), fileCount: files.length };
 }
 
-// Two lines either side of the finding, read from the sandbox, secrets masked.
+// Two lines above and below the finding, secrets masked.
 async function addSnippet(f, dir) {
   if (f.snippet) return { ...f, snippet: maskSecrets(f.snippet), snippetLine: f.line };
   if (!f.line) return f;
@@ -94,94 +96,61 @@ async function addSnippet(f, dir) {
     const start = Math.max(1, f.line - 2);
     return { ...f, snippet: maskSecrets(lines.slice(start - 1, f.line + 2).join('\n')), snippetLine: start };
   } catch {
-    return f; // the snippet is a convenience; the finding still stands without it
+    return f; // the finding is still valid without a snippet
   }
 }
 
 export async function scanDirectory(dir, onEngine, signal) {
-  dir = await fs.realpath(dir); // engines report real paths (/private/var on macOS), so match them
-  const run = (engine) => runEngine(engine, dir, onEngine, signal);
-  let results;
-  if (LOW_MEMORY) {
-    results = [];
-    for (const engine of ENGINES) results.push(await run(engine)); // one at a time
-  } else {
-    results = await Promise.all(ENGINES.map(run));
-  }
+  dir = await fs.realpath(dir); // engines report real paths, e.g. /private/var on macOS
+  const runOne = (engine) => runEngine(engine, dir, onEngine, signal);
+  let results = [];
+  if (LOW_MEMORY) for (const engine of ENGINES) results.push(await runOne(engine));
+  else results = await Promise.all(ENGINES.map(runOne));
+
   const { files, fileCount } = await mapFiles(dir);
-  const merged = merge(results.flatMap((r) => r.findings)).slice(0, MAX_FINDINGS); // shortcut: cap at 2000 findings, page them if real repos exceed it
+  const merged = merge(results.flatMap((r) => r.findings)).slice(0, MAX_FINDINGS);
   const findings = await Promise.all(merged.map((f) => addSnippet(f, dir)));
   return { files, fileCount, engines: results.map((r) => r.status), findings };
 }
 
-export const MAX_REPO_KB = 200_000;
-export const MAX_FILE_BYTES = 1_000_000; // the Repo Map and the engines already ignore files above this
-
-// GitHub's repo record, or null when GitHub cannot be reached or does not answer 200.
-export async function repoMeta({ owner, name }) {
+async function repoMeta({ owner, name }) {
   const res = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
-    headers: { 'User-Agent': 'cyberlens-scanner', Accept: 'application/vnd.github+json', ...(process.env.GITHUB_TOKEN && { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }) }, // a token lifts the limit from 60 to 5,000 calls an hour
+    headers: {
+      'User-Agent': 'cyberlens-scanner',
+      Accept: 'application/vnd.github+json',
+      // optional: raises GitHub's limit from 60 to 5,000 calls an hour
+      ...(process.env.GITHUB_TOKEN && { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }),
+    },
     signal: AbortSignal.timeout(10_000),
   }).catch(() => null);
   if (res?.status === 404) throw new ScanError('Repo not found. Cyberlens scans public GitHub repos only.');
-  return res?.ok ? res.json() : null; // shortcut: GitHub API down or rate-limited (60/h per IP) means no size check; add a token if this happens often
+  return res?.ok ? res.json() : null; // GitHub down or rate limited: carry on, the clone size is checked below
 }
 
-// What the clone really downloaded, in KB. The GitHub size check can be skipped (API down or rate-limited), this cannot.
 async function downloadedKb(dir) {
   const { stdout } = await run('git', ['-C', dir, 'count-objects', '-v']);
   return Number(/^size-pack: (\d+)/m.exec(stdout)?.[1] ?? 0) + Number(/^size: (\d+)/m.exec(stdout)?.[1] ?? 0);
 }
 
-export function tooLargeMessage(sizeKb) {
-  const mb = sizeKb / 1000;
-  return `This repo is ${mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${Math.round(mb)} MB`} on GitHub. Cyberlens scans repos up to 200 MB.`;
+function tooLarge(kb) {
+  const mb = kb / 1000;
+  const size = mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${Math.round(mb)} MB`;
+  return new ScanError(`This repo is ${size} on GitHub. Cyberlens scans repos up to 200 MB.`);
 }
 
-// Partial clone for repos over the limit: fetch only files up to 1 MB, check out only those, and say which were left out.
-export async function partialClone({ url, branch, dir, signal }) {
-  const git = (args, opts) => run('git', args, { timeout: 60_000, signal, ...opts });
-  const clone = await git(['clone', '--depth', '1', '--single-branch', '--no-tags', `--filter=blob:limit=${MAX_FILE_BYTES}`, '--no-checkout', ...(branch ? ['--branch', branch] : []), '--', url, dir]);
-  if (clone.code !== 0) return clone;
-  // Trees are always present; blobs over the limit are the ones the clone left out. `--missing=print` lists them without fetching.
-  const missing = new Set((await git(['-C', dir, 'rev-list', '--objects', '--missing=print', '--no-object-names', 'HEAD'])).stdout.split('\n').filter((l) => l.startsWith('?')).map((l) => l.slice(1)));
-  const tree = (await git(['-C', dir, 'ls-tree', '-r', '-z', 'HEAD'])).stdout.split('\0').filter(Boolean);
-  const keep = [];
-  const skipped = [];
-  for (const entry of tree) {
-    const [meta, file] = [entry.slice(0, entry.indexOf('\t')), entry.slice(entry.indexOf('\t') + 1)];
-    const [, type, oid] = meta.split(' ');
-    if (type !== 'blob') continue; // submodules are not scanned
-    (missing.has(oid) ? skipped : keep).push(file);
-  }
-  const list = `${dir}.paths`; // outside the clone, so the scan never sees it
-  await fs.writeFile(list, keep.join('\0'));
-  try {
-    const checkout = await git(['-C', dir, '--literal-pathspecs', 'checkout', 'HEAD', `--pathspec-from-file=${list}`, '--pathspec-file-nul']);
-    return { ...checkout, skipped };
-  } finally {
-    await fs.rm(list, { force: true });
-  }
-}
-
-// Clone, scan, always delete the clone. onStatus('scanning') is called between the two.
-export async function scanRepo({ id, repoUrl, branch, skipLarge }, { onStatus, onEngine, signal } = {}) {
+// Clone into a sandbox, scan it, and always delete the clone afterwards.
+export async function scanRepo({ id, repoUrl, branch }, { onStatus, onEngine, signal } = {}) {
   const repo = parseRepo(repoUrl);
   if (!repo) throw new ScanError('That is not a public GitHub repo URL.');
   const meta = await repoMeta(repo);
   if (meta?.private) throw new ScanError('This repo is private. Cyberlens scans public GitHub repos only.');
-  const tooLarge = meta?.size > MAX_REPO_KB;
-  if (tooLarge && !skipLarge) throw new ScanError(tooLargeMessage(meta.size)); // the API asks the user first; this guards any other way in
+  if (meta?.size > MAX_REPO_KB) throw tooLarge(meta.size);
+
   const dir = path.join(SANDBOXES, String(id));
   await fs.mkdir(SANDBOXES, { recursive: true });
   try {
-    const clone = tooLarge
-      ? await partialClone({ url: repo.url, branch, dir, signal })
-      : await run(
-        'git',
-        ['clone', '--depth', '1', '--single-branch', '--no-tags', ...(branch ? ['--branch', branch] : []), '--', repo.url, dir],
-        { timeout: 60_000, signal },
-      );
+    const args = ['clone', '--depth', '1', '--single-branch', '--no-tags', ...(branch ? ['--branch', branch] : []), '--', repo.url, dir];
+    const clone = await run('git', args, { timeout: 60_000, signal });
     if (signal?.aborted) throw new ScanError('Cancelled.');
     if (clone.code !== 0) {
       if (/Remote branch .* not found/.test(clone.stderr)) throw new ScanError(`Branch "${branch}" was not found in this repo.`);
@@ -189,11 +158,10 @@ export async function scanRepo({ id, repoUrl, branch, skipLarge }, { onStatus, o
       throw new ScanError('Could not clone the repo. Check the URL and that the repo is public.');
     }
     const kb = await downloadedKb(dir);
-    if (kb > MAX_REPO_KB) throw new ScanError(tooLargeMessage(kb));
+    if (kb > MAX_REPO_KB) throw tooLarge(kb);
     const commit = (await run('git', ['-C', dir, 'rev-parse', 'HEAD'])).stdout.trim();
     await onStatus?.('scanning');
-    const skipped = clone.skipped ? { count: clone.skipped.length, paths: clone.skipped.slice(0, 50) } : undefined; // shortcut: names the first 50, the count is complete
-    return { commit, skipped, ...(await scanDirectory(dir, onEngine, signal)) };
+    return { commit, ...(await scanDirectory(dir, onEngine, signal)) };
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }

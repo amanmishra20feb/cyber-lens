@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
@@ -11,25 +11,22 @@ function NewScan() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState('');
-  const [large, setLarge] = useState(null); // a repo over the size limit: waiting for the user to choose
-  const form = useRef(null);
   const start = useMutation({
     mutationFn: (body) => api('/scans', { body }),
     onSuccess: ({ scan }) => {
       queryClient.invalidateQueries({ queryKey: ['scans'] });
       navigate(`/app/scans/${scan.id}`);
     },
-    onError: (e, body) => (e.code === 'repo_too_large' ? setLarge({ message: e.message, body }) : setError(e.message)),
+    onError: (e) => setError(e.message),
   });
   const submit = (e) => {
     e.preventDefault();
     setError('');
-    setLarge(null);
     start.mutate(Object.fromEntries(new FormData(e.currentTarget)));
   };
 
   return (
-    <form ref={form} onSubmit={submit} onChange={() => large && setLarge(null)} className="mt-6 rounded-xl bg-surface p-6">
+    <form onSubmit={submit} className="mt-6 rounded-xl bg-surface p-6">
       <div className="flex flex-wrap gap-4">
         <label className="min-w-0 basis-full xl:flex-1 xl:basis-0">
           <span className="sr-only">Public GitHub repo URL</span>
@@ -43,20 +40,6 @@ function NewScan() {
           {start.isPending ? 'Starting…' : 'Scan'}
         </button>
       </div>
-      {large && (
-        <div role="alert" className="mt-4 rounded-xl border border-rule p-4">
-          <p className="font-medium">{large.message}</p>
-          <p className="mt-1 text-muted">Cyberlens can still scan it: files over 1 MB, usually videos, datasets and archives, are skipped, and the result lists what was left out.</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button type="button" autoFocus disabled={start.isPending} onClick={() => start.mutate({ ...large.body, skipLarge: true })} className="h-10 rounded-lg bg-ink px-5 font-medium text-bg hover:opacity-90 disabled:opacity-60">
-              {start.isPending ? 'Starting…' : 'Scan without large files'}
-            </button>
-            <button type="button" disabled={start.isPending} onClick={() => { setLarge(null); form.current.elements.repoUrl.focus(); }} className="h-10 rounded-lg bg-control px-5 font-medium hover:opacity-90 disabled:opacity-60">
-              Do not scan
-            </button>
-          </div>
-        </div>
-      )}
       {error && <p id="scan-error" role="alert" className="mt-3 text-sev-critical">{error}</p>}
     </form>
   );

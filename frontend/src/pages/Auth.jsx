@@ -16,7 +16,7 @@ export function AuthPage({ mode }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  // Only follow in-app paths after sign-in, never an outside URL.
+  // only redirect to paths inside the app, never to another site
   const next = params.get('next')?.startsWith('/app') ? params.get('next') : '/app';
 
   if (user) return <Navigate to={next} replace />;
@@ -42,7 +42,7 @@ export function AuthPage({ mode }) {
       </div>
       <PageTitle>{signup ? 'Create your account' : 'Sign in'}</PageTitle>
       <h1 className="text-[28px] font-medium">{signup ? 'Create your account' : 'Sign in'}</h1>
-      <p className="mt-1 text-muted">{signup ? 'Scan public GitHub repos for security problems. Free for 3 scans a day.' : 'Welcome back.'}</p>
+      <p className="mt-1 text-muted">{signup ? 'Scan public GitHub repos for security problems.' : 'Welcome back.'}</p>
       <form onSubmit={submit} className="mt-8 space-y-4">
         {signup && (
           <label className="block font-medium">

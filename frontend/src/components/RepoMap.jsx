@@ -8,13 +8,12 @@ const FILL = { critical: 'bg-sev-critical', high: 'bg-sev-high', medium: 'bg-sev
 const baseName = (path) => path.slice(path.lastIndexOf('/') + 1);
 const plural = (n) => `${n} open finding${n === 1 ? '' : 's'}`;
 
-// Every scanned file as a tile: area follows sqrt(lines), colour is the worst open finding. Only tiles with
-// open findings are buttons (a map of 1,500 tab stops would be unusable): the map is one tab stop, arrow keys
-// move between tiles, and the findings table stays the full keyboard route. Tiles are square-cornered like the severity marks.
-// shortcut: on phones the map is about 120px tall so small tiles are under 24px; the findings table is the equivalent control. Give the map a taller aspect under `sm` if people turn out to tap tiles.
+// One tile per file: size from its line count, colour from its worst open finding.
+// Only tiles with findings are buttons, and the map is a single tab stop (arrow keys move inside it).
+// TODO: tiles get tiny on phones; the findings table below covers the same thing for now.
 export function RepoMap({ files, fileCount, findings, selected, onSelect }) {
   const [active, setActive] = useState(null);
-  // The layout only depends on the files, so triaging a finding recolours tiles without re-laying them out.
+  // the layout only depends on the files, so triage just recolours tiles
   const layout = useMemo(
     () => squarify([...files].sort((a, b) => b.loc - a.loc || a.path.localeCompare(b.path)).map((f) => ({ path: f.path, loc: f.loc, weight: tileWeight(f.loc) })), W, H),
     [files],

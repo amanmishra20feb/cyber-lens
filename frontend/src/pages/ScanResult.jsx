@@ -47,8 +47,7 @@ function Progress({ scan }) {
   );
 }
 
-// The server sends the scan after every change; this keeps the cached copy current without polling.
-// EventSource reconnects by itself and the server starts each connection with the latest scan.
+// Live progress from the server. EventSource reconnects by itself.
 function useScanStream(id, live) {
   const queryClient = useQueryClient();
   useEffect(() => {
@@ -56,7 +55,7 @@ function useScanStream(id, live) {
     const stream = new EventSource(`/api/scans/${id}/events`);
     stream.onmessage = (e) => {
       const scan = JSON.parse(e.data);
-      queryClient.setQueryData(['scan', id], (old) => ({ ...old, ...scan })); // keeps the Repo Map files the stream leaves out
+      queryClient.setQueryData(['scan', id], (old) => ({ ...old, ...scan })); // keep `files`, the stream doesn't send them
       if (FINAL.includes(scan.status)) {
         stream.close();
         queryClient.invalidateQueries({ queryKey: ['scan', id] });
@@ -69,14 +68,14 @@ function useScanStream(id, live) {
 
 export function ScanResultPage() {
   const { id } = useParams();
-  const [file, setFile] = useState(null); // set by clicking a Repo Map tile, read by the findings table
+  const [file, setFile] = useState(null); // picked on the repo map, filters the findings table
   const scanQuery = useQuery({
     queryKey: ['scan', id],
     queryFn: () => api(`/scans/${id}`).then((d) => d.scan),
   });
   const scan = scanQuery.data;
   useScanStream(id, !!scan && !FINAL.includes(scan.status));
-  const cancel = useMutation({ mutationFn: () => api(`/scans/${id}/cancel`, { method: 'POST' }) }); // the stream delivers the new status
+  const cancel = useMutation({ mutationFn: () => api(`/scans/${id}/cancel`, { method: 'POST' }) }); // the new status arrives through the stream
   const findingsQuery = useQuery({
     queryKey: ['findings', id],
     queryFn: () => api(`/scans/${id}/findings`).then((d) => d.findings),
@@ -88,7 +87,7 @@ export function ScanResultPage() {
 
   const failedEngines = scan.engines.filter((e) => !e.ok);
   const findings = findingsQuery.data;
-  // Headline numbers are findings still open, so triage is reflected; scan.counts (all found) is used until the list loads.
+  // count open findings so triage shows up; fall back to scan.counts until the list loads
   const counts = findings ? Object.fromEntries(SEVERITIES.map((s) => [s, findings.filter((f) => f.severity === s && f.status === 'open').length])) : scan.counts;
 
   return (
@@ -128,19 +127,6 @@ export function ScanResultPage() {
           <p className="mt-4 text-[14px] text-muted">
             {scan.engines.filter((e) => e.ok).map((e) => `${ENGINE_NAMES[e.name]} ${e.count}`).join(', ')} findings before merging, across {scan.fileCount} files.
           </p>
-          {scan.skipped?.count > 0 && (
-            <div className="mt-4 rounded-xl bg-surface p-4">
-              <p className="font-medium">{scan.skipped.count} large file{scan.skipped.count === 1 ? ' was' : 's were'} not scanned</p>
-              <p className="mt-1 text-muted">This repo is over 200 MB, so it was scanned without files over 1 MB, usually videos, datasets and archives. Everything else was scanned.</p>
-              <details className="mt-2">
-                <summary className="cursor-pointer text-muted hover:text-ink">Show files left out</summary>
-                <ul className="mt-2 space-y-1 break-all text-[14px] text-muted">
-                  {scan.skipped.paths.map((path) => <li key={path}>{path}</li>)}
-                </ul>
-                {scan.skipped.count > scan.skipped.paths.length && <p className="mt-2 text-[14px] text-muted">and {scan.skipped.count - scan.skipped.paths.length} more.</p>}
-              </details>
-            </div>
-          )}
           {failedEngines.map((e) => (
             <p key={e.name} role="alert" className="mt-2 text-sev-high">
               {ENGINE_NAMES[e.name]} failed: {e.error}. Results from the other engines are shown.

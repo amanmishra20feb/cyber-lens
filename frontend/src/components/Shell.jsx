@@ -25,7 +25,7 @@ export function Shell() {
 
   return (
     <div className="md:grid md:min-h-dvh md:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]" style={{ '--sidebar-w': `${width}px` }}>
-      {/* The aside is the full-height column (colour and border); its content stays pinned to the viewport on desktop so the account row never scrolls away on long pages. */}
+      {/* the content sticks to the viewport so the account row never scrolls away */}
       <aside className="relative border-b border-rule bg-sidebar md:border-b-0 md:border-r">
         <div className="flex items-center gap-4 px-4 py-3 md:sticky md:top-0 md:h-dvh md:flex-col md:items-stretch md:px-3 md:pb-3 md:pt-6">
           <div className="flex items-center gap-2.5 px-3 text-[20px] font-medium">
@@ -33,7 +33,6 @@ export function Shell() {
           </div>
           <nav className="flex gap-1 md:mt-8 md:flex-col" aria-label="Main">
             <NavLink to="/app" end className={link}>Scans</NavLink>
-            {user?.role === 'admin' && <NavLink to="/app/admin" className={link}>Admin</NavLink>}
           </nav>
           <div className="ml-auto min-w-0 md:-ml-3 md:-mr-3 md:mt-auto md:border-t md:border-rule md:px-3 md:pt-3">
             <UserMenu user={user} onSignOut={signOut} />

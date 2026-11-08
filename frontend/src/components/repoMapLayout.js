@@ -1,12 +1,11 @@
 import { SEVERITIES } from '../format.js';
 
-// Pure Repo Map logic, kept free of React so it can be tested and reused by the landing page's 3D map.
+// Repo map maths without React, so it can be tested on its own.
 
-// Tile area follows sqrt(lines) so one huge file (a lockfile can be 80% of a repo) cannot hide the rest.
+// sqrt, so one huge file (a lockfile can be most of a repo) doesn't squeeze out everything else
 export const tileWeight = (loc) => Math.sqrt(Math.max(loc, 1));
 
-// The shared Repo Map shape, one entry per file: {path, loc, count, worst}.
-// count and worst only consider findings that are still open.
+// One entry per file: {path, loc, count, worst}, counting open findings only.
 export function fileStats(files, findings) {
   const open = new Map();
   for (const f of findings) {
@@ -19,8 +18,8 @@ export function fileStats(files, findings) {
   return files.map(({ path, loc }) => ({ path, loc, count: open.get(path)?.count ?? 0, worst: open.get(path)?.worst ?? null }));
 }
 
-// Squarified treemap (Bruls, Huizing, van Wijk). `items` must be sorted by weight, largest first.
-// Returns each item with x, y, w, h inside a width x height box, areas proportional to weight.
+// Squarified treemap (Bruls, Huizing & van Wijk). Items must be sorted largest first.
+// Gives each item x, y, w, h with its area proportional to its weight.
 export function squarify(items, width, height) {
   if (items.length === 0) return [];
   const scale = (width * height) / items.reduce((sum, i) => sum + i.weight, 0);
@@ -28,7 +27,7 @@ export function squarify(items, width, height) {
   let x = 0, y = 0, w = width, h = height;
   let row = [];
   const sum = (r) => r.reduce((s, n) => s + n.area, 0);
-  // The worst (largest) aspect ratio in a row laid along a side of length `side`; lower is squarer.
+  // worst aspect ratio if these items share one side; lower is squarer
   const worst = (r, side) => {
     const s = sum(r);
     return Math.max((side * side * Math.max(...r.map((n) => n.area))) / (s * s), (s * s) / (side * side * Math.min(...r.map((n) => n.area))));

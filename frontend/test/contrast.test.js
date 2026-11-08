@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-// Reads the real tokens from styles.css, so changing a colour there re-runs this check.
+// reads the real colours from styles.css
 const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
 const tokens = (selector) => {
   const body = css.slice(css.indexOf(selector)).match(/\{([^}]*)\}/)[1];
@@ -19,7 +19,7 @@ const ratio = (a, b) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
-// [foreground token, background token, minimum ratio, where it is used]
+// [text token, background token, minimum ratio, where it's used]
 const SEVERITIES = ['sev-critical', 'sev-high', 'sev-medium', 'sev-low'];
 const PAIRS = [
   ...['bg', 'sidebar', 'surface', 'control'].map((b) => ['ink', b, 4.5, 'body text']),

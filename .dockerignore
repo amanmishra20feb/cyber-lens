@@ -2,7 +2,7 @@
 **/.env
 **/dist
 .git
-cyberlens-goat
 backend/test
+backend/goat
 backend/scripts
 frontend/test

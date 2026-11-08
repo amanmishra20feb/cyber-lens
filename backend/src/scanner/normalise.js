@@ -39,7 +39,7 @@ export function parseGitleaks(json, dir) {
     owasp: ['A07'],
     file: rel(dir, r.File),
     line: r.StartLine ?? null,
-    snippet: r.Match, // already redacted by --redact
+    snippet: r.Match, // --redact already hid the secret
   }));
 }
 
@@ -71,7 +71,8 @@ export function parseOsv(json, dir) {
   return out;
 }
 
-// One finding per place and problem, whichever engines reported it.
+// The same problem on the same line from two engines becomes one finding listing both.
+// Dependency findings have no line, so they are keyed by package and advisory instead.
 export function merge(findings) {
   const byKey = new Map();
   for (const f of findings) {
@@ -89,6 +90,6 @@ export function merge(findings) {
   return [...byKey.values()].map(({ engine, ...f }) => f).sort((a, b) => rank(a.severity) - rank(b.severity));
 }
 
-// Mask anything that looks like a key or token: 16+ characters mixing letters and digits.
+// Hides anything that looks like a key: 16+ characters with both letters and digits.
 export const maskSecrets = (text) =>
   text.replace(/[A-Za-z0-9+/=_-]{16,}/g, (t) => (/\d/.test(t) && /[A-Za-z]/.test(t) ? `${t.slice(0, 4)}••••${t.slice(-4)}` : t));
