@@ -51,10 +51,10 @@ export function UserMenu({ user, onSignOut }) {
         className="flex w-full min-w-0 items-center gap-2.5 rounded-lg px-3 py-1.5 text-left hover:bg-control aria-expanded:bg-control"
       >
         <UserIcon />
-        <span className="min-w-0 truncate font-medium">{user?.name}</span>
+        <span className="min-w-0 truncate font-medium max-sm:sr-only">{user?.name}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-10 mt-1 w-56 rounded-xl border border-rule bg-surface p-1 shadow-[0_8px_24px_rgb(0_0_0/.12)] md:bottom-full md:left-0 md:right-auto md:top-auto md:mb-1 md:mt-0">
+        <div className="pop absolute right-0 top-full z-10 mt-1 w-56 origin-top-right rounded-xl border border-rule bg-surface p-1 shadow-[0_8px_24px_rgb(0_0_0/.12)] md:bottom-full md:left-0 md:right-auto md:top-auto md:mb-1 md:mt-0 md:origin-bottom-left">
           <p className="truncate px-3 py-2 text-[14px] text-muted" title={user?.email}>{user?.email}</p>
           <div role="menu" aria-label="Account" className="border-t border-rule pt-1">
             <Link role="menuitem" to="/app/settings" onClick={() => setOpen(false)} className={item}>Settings</Link>

@@ -1,9 +1,9 @@
-import { NavLink, Outlet, useNavigate } from 'react-router';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { useState } from 'react';
 import { useMe } from '../auth.jsx';
-import { Mark } from './Mark.jsx';
+import { Logo } from './Logo.jsx';
 import { ResizeHandle, SIDEBAR, clampWidth } from './ResizeHandle.jsx';
 import { UserMenu } from './UserMenu.jsx';
 
@@ -16,6 +16,7 @@ export function Shell() {
     try { localStorage.setItem('sidebarWidth', String(w)); } catch { /* the width just will not be remembered */ }
   };
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const signOut = async () => {
     await api('/auth/logout', { method: 'POST' }).catch(() => {});
     queryClient.clear();
@@ -28,19 +29,20 @@ export function Shell() {
       {/* the content sticks to the viewport so the account row never scrolls away */}
       <aside className="relative border-b border-rule bg-sidebar md:border-b-0 md:border-r">
         <div className="flex items-center gap-4 px-4 py-3 md:sticky md:top-0 md:h-dvh md:flex-col md:items-stretch md:px-3 md:pb-3 md:pt-6">
-          <div className="flex items-center gap-2.5 px-3 text-[20px] font-medium">
-            <Mark size={28} /> Cyberlens
+          <div className="md:px-3">
+            <Logo className="h-9 md:h-10" />
           </div>
-          <nav className="flex gap-1 md:mt-8 md:flex-col" aria-label="Main">
+          <nav className="ml-auto flex gap-1 md:ml-0 md:mt-8 md:flex-col" aria-label="Main">
             <NavLink to="/app" end className={link}>Scans</NavLink>
           </nav>
-          <div className="ml-auto min-w-0 md:-ml-3 md:-mr-3 md:mt-auto md:border-t md:border-rule md:px-3 md:pt-3">
+          <div className="min-w-0 md:-ml-3 md:-mr-3 md:mt-auto md:border-t md:border-rule md:px-3 md:pt-3">
             <UserMenu user={user} onSignOut={signOut} />
           </div>
         </div>
         <ResizeHandle width={width} onChange={resize} />
       </aside>
-      <main className="min-w-0 px-4 py-8 md:px-8">
+      {/* the key replays the page animation */}
+      <main key={pathname} className="page-in min-w-0 px-4 py-8 md:px-8">
         <Outlet />
       </main>
     </div>

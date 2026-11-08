@@ -134,13 +134,13 @@ export function ScanResultPage() {
           ))}
 
           {findings && scan.files?.length > 0 && (
-            <section className="mt-12" aria-labelledby="map">
+            <section className="reveal mt-12" aria-labelledby="map">
               <h2 id="map" className="mb-4 text-[22px] font-medium">Repo map</h2>
               <RepoMap files={scan.files} fileCount={scan.fileCount} findings={findings} selected={file} onSelect={setFile} />
             </section>
           )}
 
-          <section className="mt-12" aria-labelledby="findings">
+          <section className="reveal mt-12" aria-labelledby="findings">
             <h2 id="findings" className="text-[22px] font-medium">Findings</h2>
             {findingsQuery.isPending && <p className="mt-4 text-muted">Loading findings…</p>}
             {findingsQuery.error && <p role="alert" className="mt-4 text-sev-critical">{findingsQuery.error.message}</p>}
