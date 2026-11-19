@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
-import { ENGINE_NAMES, IGNORE_REASON_TEXT, OWASP_2025, STATUS_LABEL } from '../format.js';
+import { ENGINE_NAMES, IGNORE_REASON_TEXT, OWASP_2025, FINDING_STATUS_TEXT } from '../format.js';
 import { Severity } from './Severity.jsx';
 
 function Snippet({ finding }) {
@@ -72,7 +72,7 @@ export function FindingDrawer({ finding: f, onClose }) {
         <section aria-labelledby="triage" className="mt-8 border-t border-rule pt-6">
           <h3 id="triage" className="font-medium">Triage</h3>
           <p className="mt-1 text-muted" aria-live="polite">
-            {STATUS_LABEL[f.status]}{f.status === 'ignored' && `: ${IGNORE_REASON_TEXT[f.ignoreReason]}`}
+            {FINDING_STATUS_TEXT[f.status]}{f.status === 'ignored' && `: ${IGNORE_REASON_TEXT[f.ignoreReason]}`}
           </p>
           {f.status === 'open' ? (
             <div className="mt-4 space-y-4">

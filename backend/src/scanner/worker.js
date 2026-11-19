@@ -1,7 +1,7 @@
 import { sql, tx } from '../db.js';
-import { SEVERITIES, NOT_FINAL } from '../models.js';
+import { NOT_FINAL } from '../models.js';
+import { SEVERITIES } from './normalise.js';
 import { scanRepo, ScanError, LOW_MEMORY } from './scan.js';
-import { publish } from './events.js';
 
 // TODO: this queue lives in memory, so it only works with a single API instance
 const MAX_RUNNING = LOW_MEMORY ? 1 : 2;
@@ -9,11 +9,11 @@ const queue = [];
 const running = new Map(); // scan id -> AbortController
 
 export function enqueue(scanId) {
-  queue.push(String(scanId));
+  queue.push(scanId);
   next();
 }
 
-export const cancel = (scanId) => running.get(String(scanId))?.abort();
+export const cancel = (scanId) => running.get(scanId)?.abort();
 
 function next() {
   while (running.size < MAX_RUNNING && queue.length) {
@@ -28,16 +28,12 @@ function next() {
 
 async function runScan(id) {
   // Only touches a scan that isn't finished yet, so a cancel always wins.
-  const set = async (changes, params = [], run = sql) => {
-    const updated = (await run(`UPDATE scans SET ${changes} WHERE id = $1 AND ${NOT_FINAL} RETURNING id`, [id, ...params])).length > 0;
-    if (updated && run === sql) publish(id);
-    return updated;
-  };
+  const set = async (changes, params = [], run = sql) =>
+    (await run(`UPDATE scans SET ${changes} WHERE id = $1 AND ${NOT_FINAL} RETURNING id`, [id, ...params])).length > 0;
 
   try {
     const [scan] = await sql(`UPDATE scans SET status = 'cloning', started_at = now() WHERE id = $1 AND status = 'queued' RETURNING *`, [id]);
     if (!scan) return; // cancelled while it was queued
-    publish(id);
 
     const result = await scanRepo(scan, {
       signal: running.get(id).signal,
@@ -48,12 +44,9 @@ async function runScan(id) {
     if (!saving) return;
 
     const counts = Object.fromEntries(SEVERITIES.map((s) => [s, result.findings.filter((f) => f.severity === s).length]));
-    const done = await tx(async (run) => {
-      if (!(await set("status = 'done', counts = $2::jsonb, finished_at = now()", [JSON.stringify(counts)], run))) return false;
-      await insertFindings(run, scan, result.findings);
-      return true;
+    await tx(async (run) => {
+      if (await set("status = 'done', counts = $2::jsonb, finished_at = now()", [JSON.stringify(counts)], run)) await insertFindings(run, scan, result.findings);
     });
-    if (done) publish(id);
   } catch (e) {
     if (!(e instanceof ScanError)) console.error(`scan ${id} failed:`, e);
     const message = e instanceof ScanError ? e.message : 'The scan failed unexpectedly. Try again.';

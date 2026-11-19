@@ -3,6 +3,11 @@ import { sql } from './db.js';
 import { USER_COLUMNS } from './models.js';
 import { isId } from './validate.js';
 
+if (!process.env.JWT_SECRET) {
+  try { process.loadEnvFile?.(); } catch {}
+  try { process.loadEnvFile?.(new URL('../.env', import.meta.url)); } catch {}
+}
+
 const SECRET = process.env.JWT_SECRET;
 if (!SECRET || SECRET.length < 32) throw new Error('JWT_SECRET must be set to at least 32 random characters.');
 
@@ -17,7 +22,7 @@ export function setSession(res, user) {
 export async function requireUser(req, res, next) {
   let sub;
   try {
-    ({ sub } = jwt.verify(req.cookies[COOKIE] ?? '', SECRET));
+    ({ sub } = jwt.verify(req.cookies?.[COOKIE] ?? '', SECRET));
   } catch {
     // missing, expired or forged: treated as signed out
   }

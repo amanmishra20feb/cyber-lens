@@ -39,6 +39,19 @@ for (const [theme, t] of Object.entries(THEMES)) {
   });
 }
 
+test('contrast: tile labels stay readable on the quiet tint outside the lens', () => {
+  const tint = (hex, over) => '#' + [1, 3, 5].map((i) => {
+    const mix = 0.35 * parseInt(hex.slice(i, i + 2), 16) + 0.65 * parseInt(over.slice(i, i + 2), 16);
+    return Math.round(mix).toString(16).padStart(2, '0');
+  }).join('');
+  for (const [theme, t] of Object.entries(THEMES)) {
+    for (const s of SEVERITIES) {
+      const got = ratio(t.ink, tint(t[s], t.surface));
+      assert.ok(got >= 4.5, `${theme}: ink on ${s} tint is ${got.toFixed(2)}`);
+    }
+  }
+});
+
 test('contrast: the sidebar, cards and dividers stay visible in both themes', () => {
   for (const [theme, t] of Object.entries(THEMES)) {
     assert.ok(ratio(t.sidebar, t.bg) >= 1.1, `${theme}: sidebar blends into the page`);

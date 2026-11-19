@@ -6,6 +6,6 @@ export async function api(path, { body, method = body ? 'POST' : 'GET' } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = res.status === 204 ? null : await res.json().catch(() => null);
-  if (!res.ok) throw Object.assign(new Error(data?.error ?? 'Could not reach the server. Check your connection.'), { status: res.status, code: data?.code });
+  if (!res.ok) throw Object.assign(new Error(data?.error ?? 'Could not reach the server. Check your connection.'), { status: res.status });
   return data;
 }

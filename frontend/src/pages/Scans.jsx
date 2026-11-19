@@ -1,27 +1,21 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { PageTitle } from '../components/PageTitle.jsx';
-import { FINAL, SEVERITIES, STATUS_TEXT, repoName, timeAgo } from '../format.js';
-
-const SEV_LABEL = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
+import { FINAL, SCAN_STATUS_TEXT, SEVERITIES, SEVERITY_TEXT, repoName, timeAgo } from '../format.js';
 
 function NewScan() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [error, setError] = useState('');
   const start = useMutation({
     mutationFn: (body) => api('/scans', { body }),
     onSuccess: ({ scan }) => {
       queryClient.invalidateQueries({ queryKey: ['scans'] });
       navigate(`/app/scans/${scan.id}`);
     },
-    onError: (e) => setError(e.message),
   });
   const submit = (e) => {
     e.preventDefault();
-    setError('');
     start.mutate(Object.fromEntries(new FormData(e.currentTarget)));
   };
 
@@ -30,7 +24,7 @@ function NewScan() {
       <div className="flex flex-wrap gap-4">
         <label className="min-w-0 basis-full xl:flex-1 xl:basis-0">
           <span className="sr-only">Public GitHub repo URL</span>
-          <input name="repoUrl" required placeholder="https://github.com/owner/repo" aria-describedby={error ? 'scan-error' : undefined} className="h-12 w-full rounded-lg border border-rule bg-surface px-4 text-[16px] placeholder:text-muted" />
+          <input name="repoUrl" required placeholder="https://github.com/owner/repo" aria-describedby={start.error ? 'scan-error' : undefined} className="h-12 w-full rounded-lg border border-rule bg-surface px-4 text-[16px] placeholder:text-muted" />
         </label>
         <label className="min-w-0 flex-1 xl:w-56 xl:flex-none">
           <span className="sr-only">Branch (optional)</span>
@@ -40,7 +34,7 @@ function NewScan() {
           {start.isPending ? 'Starting…' : 'Scan'}
         </button>
       </div>
-      {error && <p id="scan-error" role="alert" className="mt-3 text-sev-critical">{error}</p>}
+      {start.error && <p id="scan-error" role="alert" className="mt-3 text-sev-critical">{start.error.message}</p>}
     </form>
   );
 }
@@ -69,7 +63,7 @@ export function ScansPage() {
                 <tr>
                   <th className="py-2 pr-4 font-normal">Repository</th>
                   <th className="py-2 pr-4 font-normal">Status</th>
-                  {SEVERITIES.map((s) => <th key={s} className="py-2 pr-4 text-right font-normal">{SEV_LABEL[s]}</th>)}
+                  {SEVERITIES.map((s) => <th key={s} className="py-2 pr-4 text-right font-normal">{SEVERITY_TEXT[s]}</th>)}
                   <th className="py-2 text-right font-normal">Started</th>
                 </tr>
               </thead>
@@ -82,7 +76,7 @@ export function ScansPage() {
                         <Link to={`/app/scans/${scan.id}`} className="font-medium hover:underline underline-offset-4">{repoName(scan.repoUrl)}</Link>
                         {scan.branch && <span className="ml-2 text-muted">{scan.branch}</span>}
                       </td>
-                      <td className={`pr-4 ${scan.status === 'failed' ? 'text-sev-critical' : FINAL.includes(scan.status) ? 'text-muted' : 'text-data'}`}>{STATUS_TEXT[scan.status]}</td>
+                      <td className={`pr-4 ${scan.status === 'failed' ? 'text-sev-critical' : FINAL.includes(scan.status) ? 'text-muted' : 'text-data'}`}>{SCAN_STATUS_TEXT[scan.status]}</td>
                       {SEVERITIES.map((s) => (
                         <td key={s} className={`num pr-4 text-right ${done && scan.counts[s] ? '' : 'text-muted'}`}>{done ? scan.counts[s] : '—'}</td>
                       ))}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fileStats, squarify, tileWeight } from '../src/components/repoMapLayout.js';
+import { fileStats, lensSummary, squarify, tileWeight } from '../src/components/repoMapLayout.js';
 
 const EPS = 1e-6;
 
@@ -51,4 +51,15 @@ test('fileStats: counts only open findings, picks the worst severity, ignores fi
     { path: 'b.js', loc: 20, count: 0, worst: null },
     { path: 'c.js', loc: 30, count: 0, worst: null },
   ]);
+});
+
+test('lensSummary: names the tile under the centre and totals every tile the circle touches', () => {
+  const tiles = [
+    { path: 'a', x: 0, y: 0, w: 10, h: 10, count: 2, worst: 'high' },
+    { path: 'b', x: 10, y: 0, w: 10, h: 10, count: 0, worst: null },
+    { path: 'c', x: 50, y: 0, w: 10, h: 10, count: 5, worst: 'critical' },
+  ];
+  assert.deepEqual(lensSummary(tiles, 9, 5, 2), { under: 'a', count: 2, worst: 'high', files: 2, findings: 2 });
+  assert.deepEqual(lensSummary(tiles, 11, 5, 2), { under: 'b', count: 0, worst: null, files: 2, findings: 2 });
+  assert.deepEqual(lensSummary(tiles, 90, 90, 2), { under: null, count: 0, worst: null, files: 0, findings: 0 });
 });

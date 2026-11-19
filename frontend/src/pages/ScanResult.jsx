@@ -1,28 +1,16 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
+import { EngineBeams } from '../components/EngineBeams.jsx';
 import { Findings } from '../components/FindingsTable.jsx';
 import { PageTitle } from '../components/PageTitle.jsx';
 import { RepoMap } from '../components/RepoMap.jsx';
 import { Severity } from '../components/Severity.jsx';
-import { ENGINE_NAMES, FINAL, SEVERITIES, STATUS_TEXT, duration, repoName } from '../format.js';
+import { ENGINE_NAMES, FINAL, SEVERITIES, SCAN_STATUS_TEXT, duration, repoName } from '../format.js';
 
 const STAGES = ['cloning', 'scanning', 'saving'];
 const STAGE_TEXT = { cloning: 'Cloning the repo into a sandbox', scanning: 'Running Semgrep, Gitleaks and OSV-Scanner', saving: 'Saving findings' };
-
-const ENGINE_ORDER = ['semgrep', 'gitleaks', 'osv'];
-
-function EngineRow({ name, result, waiting }) {
-  const state = result ? (result.ok ? `${result.count} finding${result.count === 1 ? '' : 's'} in ${(result.ms / 1000).toFixed(1)} s` : 'Failed') : waiting ? 'Waiting' : 'Running';
-  return (
-    <li className="flex items-center gap-3">
-      <span aria-hidden="true" className={`size-2.5 rounded-[3px] ${!result ? (waiting ? 'bg-control' : 'animate-pulse bg-data') : result.ok ? 'bg-ink' : 'bg-sev-critical'}`} />
-      <span className="w-28">{ENGINE_NAMES[name]}</span>
-      <span className={result?.ok === false ? 'text-sev-critical' : 'text-muted'}>{state}</span>
-    </li>
-  );
-}
 
 function Progress({ scan }) {
   const current = STAGES.indexOf(scan.status);
@@ -38,32 +26,36 @@ function Progress({ scan }) {
           </li>
         ))}
       </ol>
-      {current >= 1 && (
-        <ul className="mt-6 space-y-2 pl-5">
-          {ENGINE_ORDER.map((name) => <EngineRow key={name} name={name} result={scan.engines.find((e) => e.name === name)} />)}
-        </ul>
-      )}
+      {current >= 1 && <div className="mt-6"><EngineBeams finished={scan.engines} oneAtATime={scan.oneAtATime} /></div>}
     </div>
   );
 }
 
-// Live progress from the server. EventSource reconnects by itself.
-function useScanStream(id, live) {
+// Asks once before deleting; "Cancel" takes focus, so pressing Enter twice does not delete.
+function DeleteScan({ id }) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  useEffect(() => {
-    if (!live) return;
-    const stream = new EventSource(`/api/scans/${id}/events`);
-    stream.onmessage = (e) => {
-      const scan = JSON.parse(e.data);
-      queryClient.setQueryData(['scan', id], (old) => ({ ...old, ...scan })); // keep `files`, the stream doesn't send them
-      if (FINAL.includes(scan.status)) {
-        stream.close();
-        queryClient.invalidateQueries({ queryKey: ['scan', id] });
-        queryClient.invalidateQueries({ queryKey: ['scans'] });
-      }
-    };
-    return () => stream.close();
-  }, [id, live, queryClient]);
+  const [asking, setAsking] = useState(false);
+  const remove = useMutation({
+    mutationFn: () => api(`/scans/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scans'] });
+      navigate('/app', { replace: true });
+    },
+  });
+  const button = 'h-9 rounded-lg px-4 font-medium hover:opacity-80 disabled:opacity-60';
+
+  if (!asking) return <button type="button" onClick={() => setAsking(true)} className={`${button} bg-control`}>Delete scan</button>;
+  return (
+    <div>
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span>Delete this scan and all its findings? This cannot be undone.</span>
+        <button type="button" onClick={() => remove.mutate()} disabled={remove.isPending} className={`${button} bg-sev-critical text-bg`}>{remove.isPending ? 'Deleting…' : 'Delete'}</button>
+        <button type="button" autoFocus onClick={() => setAsking(false)} disabled={remove.isPending} className={`${button} bg-control`}>Cancel</button>
+      </p>
+      {remove.error && <p role="alert" className="mt-2 text-sev-critical">{remove.error.message}</p>}
+    </div>
+  );
 }
 
 export function ScanResultPage() {
@@ -72,9 +64,10 @@ export function ScanResultPage() {
   const scanQuery = useQuery({
     queryKey: ['scan', id],
     queryFn: () => api(`/scans/${id}`).then((d) => d.scan),
+    // asks again every 2 s until the scan finishes
+    refetchInterval: (q) => (q.state.data && !FINAL.includes(q.state.data.status) ? 2000 : false),
   });
   const scan = scanQuery.data;
-  useScanStream(id, !!scan && !FINAL.includes(scan.status));
   const cancel = useMutation({ mutationFn: () => api(`/scans/${id}/cancel`, { method: 'POST' }) }); // the new status arrives through the stream
   const findingsQuery = useQuery({
     queryKey: ['findings', id],
@@ -98,7 +91,7 @@ export function ScanResultPage() {
         <a href={scan.repoUrl} target="_blank" rel="noreferrer" className="hover:underline underline-offset-4">{repoName(scan.repoUrl)}</a>
       </h1>
       <p className="mt-1 text-muted">
-        {[scan.branch ?? 'Default branch', scan.commit && `commit ${scan.commit.slice(0, 7)}`, STATUS_TEXT[scan.status], scan.finishedAt && scan.startedAt && `took ${duration(scan.startedAt, scan.finishedAt)}`].filter(Boolean).join(', ')}
+        {[scan.branch ?? 'Default branch', scan.commit && `commit ${scan.commit.slice(0, 7)}`, SCAN_STATUS_TEXT[scan.status], scan.finishedAt && scan.startedAt && `took ${duration(scan.startedAt, scan.finishedAt)}`].filter(Boolean).join(', ')}
       </p>
 
       {!FINAL.includes(scan.status) && (
@@ -133,6 +126,9 @@ export function ScanResultPage() {
             </p>
           ))}
 
+          {/* both sections wait for the list, so the map never appears above the table and pushes it down */}
+          {findingsQuery.isPending && <p className="mt-12 text-muted">Loading findings…</p>}
+          {findingsQuery.error && <p role="alert" className="mt-12 text-sev-critical">{findingsQuery.error.message}</p>}
           {findings && scan.files?.length > 0 && (
             <section className="reveal mt-12" aria-labelledby="map">
               <h2 id="map" className="mb-4 text-[22px] font-medium">Repo map</h2>
@@ -140,16 +136,22 @@ export function ScanResultPage() {
             </section>
           )}
 
-          <section className="reveal mt-12" aria-labelledby="findings">
-            <h2 id="findings" className="text-[22px] font-medium">Findings</h2>
-            {findingsQuery.isPending && <p className="mt-4 text-muted">Loading findings…</p>}
-            {findingsQuery.error && <p role="alert" className="mt-4 text-sev-critical">{findingsQuery.error.message}</p>}
-            {findings?.length === 0 && (
-              <p className="mt-4 text-muted">No findings. Cyberlens ran {scan.engines.filter((e) => e.ok).length} engines on {scan.fileCount} files and found nothing to report.</p>
-            )}
-            {findings?.length > 0 && <Findings findings={findings} file={file} onFile={setFile} />}
-          </section>
+          {findings && (
+            <section className="reveal mt-12" aria-labelledby="findings">
+              <h2 id="findings" className="text-[22px] font-medium">Findings</h2>
+              {findings.length === 0 && (
+                <p className="mt-4 text-muted">No findings. Cyberlens ran {scan.engines.filter((e) => e.ok).length} engines on {scan.fileCount} files and found nothing to report.</p>
+              )}
+              {findings.length > 0 && <Findings findings={findings} file={file} onFile={setFile} />}
+            </section>
+          )}
         </>
+      )}
+
+      {FINAL.includes(scan.status) && (
+        <div className="mt-12 border-t border-rule pt-6">
+          <DeleteScan id={scan.id} />
+        </div>
       )}
     </>
   );

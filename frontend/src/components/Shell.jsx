@@ -1,7 +1,7 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
-import { useState } from 'react';
 import { useMe } from '../auth.jsx';
 import { Logo } from './Logo.jsx';
 import { ResizeHandle, SIDEBAR, clampWidth } from './ResizeHandle.jsx';

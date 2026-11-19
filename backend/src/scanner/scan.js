@@ -146,7 +146,7 @@ export async function scanRepo({ id, repoUrl, branch }, { onStatus, onEngine, si
   if (meta?.private) throw new ScanError('This repo is private. Cyberlens scans public GitHub repos only.');
   if (meta?.size > MAX_REPO_KB) throw tooLarge(meta.size);
 
-  const dir = path.join(SANDBOXES, String(id));
+  const dir = path.join(SANDBOXES, id);
   await fs.mkdir(SANDBOXES, { recursive: true });
   try {
     const args = ['clone', '--depth', '1', '--single-branch', '--no-tags', ...(branch ? ['--branch', branch] : []), '--', repo.url, dir];

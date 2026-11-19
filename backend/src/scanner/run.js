@@ -4,17 +4,17 @@ const MAX_OUTPUT = 64 * 1024 * 1024;
 
 // The engines read code from strangers' repos, so they only get these variables, never our secrets.
 const KEEP = ['PATH', 'HOME', 'USER', 'TMPDIR', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'];
-const safeEnv = (extra) => ({ ...Object.fromEntries(KEEP.filter((k) => process.env[k] !== undefined).map((k) => [k, process.env[k]])), GIT_TERMINAL_PROMPT: '0', ...extra });
+const safeEnv = () => ({ ...Object.fromEntries(KEEP.filter((k) => process.env[k] !== undefined).map((k) => [k, process.env[k]])), GIT_TERMINAL_PROMPT: '0' });
 
 // Runs a program without a shell and never rejects: a failure comes back as code -1.
 // `detached` puts it in its own process group, so killing -pid also stops the helpers semgrep starts.
-export function run(cmd, args, { timeout, env, signal } = {}) {
+export function run(cmd, args, { timeout, signal } = {}) {
   return new Promise((resolve) => {
     const out = [];
     let size = 0;
     let stderr = '';
     let stopped = ''; // why we killed it
-    const child = spawn(cmd, args, { env: safeEnv(env), detached: true });
+    const child = spawn(cmd, args, { env: safeEnv(), detached: true });
     const kill = (why) => {
       stopped ||= why;
       try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already exited */ }

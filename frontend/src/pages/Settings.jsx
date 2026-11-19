@@ -10,7 +10,11 @@ const THEMES = [
 function Appearance() {
   const [theme, setTheme] = useState(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
   const choose = (value) => {
-    document.documentElement.dataset.theme = value;
+    const root = document.documentElement;
+    root.classList.add('theme-swap');
+    root.dataset.theme = value;
+    void root.offsetWidth; // apply the new colours before transitions come back
+    root.classList.remove('theme-swap');
     try { localStorage.setItem('theme', value); } catch { /* private mode: the choice just won't persist */ }
     setTheme(value);
   };

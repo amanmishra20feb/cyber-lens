@@ -1,16 +1,3 @@
-export const OWASP_2025 = {
-  A01: 'Broken Access Control',
-  A02: 'Security Misconfiguration',
-  A03: 'Software Supply Chain Failures',
-  A04: 'Cryptographic Failures',
-  A05: 'Injection',
-  A06: 'Insecure Design',
-  A07: 'Authentication Failures',
-  A08: 'Software or Data Integrity Failures',
-  A09: 'Security Logging and Alerting Failures',
-  A10: 'Mishandling of Exceptional Conditions',
-};
-
 // 2021 code -> the 2025 category it became
 const FROM_2021 = { A01: 'A01', A02: 'A04', A03: 'A05', A04: 'A06', A05: 'A02', A06: 'A03', A07: 'A07', A08: 'A08', A09: 'A09', A10: 'A01' };
 

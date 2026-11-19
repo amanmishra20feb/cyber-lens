@@ -120,37 +120,17 @@ test('scans that failed before any engine ran do not use up the daily limit', as
 });
 
 // reads the event stream until it closes and returns the statuses it sent
-async function readStatuses(path, cookie, between) {
-  const res = await fetch(base + path, { headers: { cookie }, signal: AbortSignal.timeout(5000) });
-  if (res.status !== 200) return { status: res.status, statuses: [] };
-  const reader = res.body.getReader();
-  let text = '';
-  between?.();
-  for (let r = await reader.read(); !r.done; r = await reader.read()) text += new TextDecoder().decode(r.value);
-  const statuses = [...text.matchAll(/^data: (.+)$/gm)].map((m) => JSON.parse(m[1]).status).filter((s, i, all) => s !== all[i - 1]);
-  return { status: 200, statuses, hasFiles: text.includes('"files"') };
-}
-
-test('the event stream sends the scan, then each change, then closes when the scan ends', async () => {
-  const { publish } = await import('../src/scanner/events.js');
+test('a scan can be read by its owner only, with oneAtATime for the progress view', async () => {
   const fay = await signup('fay@example.com');
   const gus = await signup('gus@example.com');
   const fayId = (await call('/auth/me', { cookie: fay.cookie })).body.user.id;
-  const scan = await addScan(fayId, { status: 'cloning' });
-  const later = async () => {
-    await new Promise((r) => setTimeout(r, 150));
-    await sql("UPDATE scans SET status = 'scanning', engines = engines || $2::jsonb WHERE id = $1", [scan.id, JSON.stringify([{ name: 'semgrep', ok: true, count: 2, ms: 10 }])]);
-    publish(scan.id);
-    await new Promise((r) => setTimeout(r, 150));
-    await sql("UPDATE scans SET status = 'done' WHERE id = $1", [scan.id]);
-    publish(scan.id);
-  };
-  const result = await readStatuses(`/scans/${scan.id}/events`, fay.cookie, later);
-  assert.deepEqual(result.statuses, ['cloning', 'scanning', 'done']);
-  assert.equal(result.hasFiles, false); // the Repo Map data is large and not part of progress events
-  assert.equal((await readStatuses(`/scans/${scan.id}/events`, gus.cookie)).status, 404);
-  assert.equal((await readStatuses(`/scans/${scan.id}/events`, 'cl_token=forged')).status, 401);
-  assert.deepEqual((await readStatuses(`/scans/${scan.id}/events`, fay.cookie)).statuses, ['done']); // a finished scan sends once and closes
+  const scan = await addScan(fayId, { status: 'scanning' });
+  const own = await call(`/scans/${scan.id}`, { cookie: fay.cookie });
+  assert.equal(own.status, 200);
+  assert.equal(own.body.scan.status, 'scanning');
+  assert.equal(own.body.scan.oneAtATime, false); // LOW_MEMORY is off in tests
+  assert.equal((await call(`/scans/${scan.id}`, { cookie: gus.cookie })).status, 404);
+  assert.equal((await call(`/scans/${scan.id}`, { cookie: 'cl_token=forged' })).status, 401);
 });
 
 test('cancel stops an unfinished scan, refuses a finished one, and respects ownership', async () => {
@@ -174,6 +154,26 @@ test('cancel stops an unfinished scan, refuses a finished one, and respects owne
   const [after] = await sql('SELECT status FROM scans WHERE id = $1', [queued.id]);
   assert.equal(after.status, 'cancelled');
   assert.equal(await countRows('findings WHERE scan_id = $1', [queued.id]), 0);
+});
+
+test('delete removes a finished scan and its findings, refuses a running one, and respects ownership', async () => {
+  // hal and ivy signed up in the cancel test; logging in keeps clear of the sign-up limit
+  const login = (email) => call('/auth/login', { body: { email, password: 'correct horse' } });
+  const hal = await login('hal@example.com');
+  const ivy = await login('ivy@example.com');
+  const halId = (await call('/auth/me', { cookie: hal.cookie })).body.user.id;
+  const running = await addScan(halId, { status: 'scanning' });
+  const done = await addScan(halId);
+  await addFinding(done, { fingerprint: 'del-1' });
+
+  const del = (scan, who) => call(`/scans/${scan.id}`, { cookie: who.cookie, method: 'DELETE' });
+  assert.equal((await del(running, hal)).status, 409);
+  assert.equal((await del(done, ivy)).status, 404);
+  assert.equal((await call('/scans/not-an-id', { cookie: hal.cookie, method: 'DELETE' })).status, 404);
+  assert.equal((await del(done, hal)).status, 204);
+  assert.equal((await call(`/scans/${done.id}`, { cookie: hal.cookie })).status, 404);
+  assert.equal(await countRows('findings WHERE scan_id = $1', [done.id]), 0);
+  assert.equal(await countRows('scans WHERE id = $1', [running.id]), 1);
 });
 
 test('saving a scan keeps every finding field, including lists, empty values and odd characters', async () => {

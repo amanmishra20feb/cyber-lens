@@ -1,23 +1,23 @@
 {
-  "date": "2026-11-08T07:38:40.228Z",
+  "date": "2026-11-19T14:10:01.608Z",
   "engines": [
     {
       "name": "semgrep",
       "ok": true,
       "count": 17,
-      "ms": 3195
+      "ms": 4306
     },
     {
       "name": "gitleaks",
       "ok": true,
       "count": 1,
-      "ms": 41
+      "ms": 77
     },
     {
       "name": "osv",
       "ok": true,
       "count": 8,
-      "ms": 2166
+      "ms": 1611
     }
   ],
   "planted": 18,

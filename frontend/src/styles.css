@@ -15,7 +15,10 @@
   --control: #d9d9d9;
   --data: #2f6f5e;
   --focus: #2f6f5e;
-  --brand: #2f6f5e; /* the logo only; not a UI accent */
+  --brand: #2f6f5e; /* the logo and the lens rim, which echoes it; not a UI accent */
+  /* grey tiles on a light map need more edge than dark does for the lens to stand out */
+  --lens-rim: color-mix(in srgb, var(--brand) 60%, transparent);
+  --lens-outer: 0 1px 10px 1px color-mix(in srgb, var(--ink) 16%, transparent);
   --sev-critical: #b42318;
   --sev-high: #b24a08;
   --sev-medium: #a15c07;
@@ -33,7 +36,9 @@
   --control: #3a3a3a;
   --data: #ececec;
   --focus: #ececec;
-  --brand: #9fc7b8; /* the logo keeps its jade in dark */
+  --brand: #9fc7b8; /* keeps its jade in dark */
+  --lens-rim: color-mix(in srgb, var(--brand) 45%, transparent);
+  --lens-outer: 0 0 8px 2px color-mix(in srgb, var(--surface) 55%, transparent);
   --sev-critical: #f97066;
   --sev-high: #fb923c;
   --sev-medium: #facc15;
@@ -60,6 +65,8 @@
 }
 
 @layer base {
+  /* the page does not shift sideways when its length changes */
+  html { scrollbar-gutter: stable; }
   body {
     background: var(--bg);
     color: var(--ink);
@@ -95,6 +102,9 @@
 @keyframes rise {
   from { opacity: 0; transform: translateY(var(--rise)); }
 }
+@keyframes fade {
+  from { opacity: 0; }
+}
 
 .pop { transition: opacity var(--duration-fast) var(--ease-smooth-out), transform var(--duration-fast) var(--ease-smooth-out); }
 @starting-style {
@@ -117,16 +127,17 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html { scroll-behavior: smooth; }
-  button:not(:disabled):active, a:active, label:has(> input[type='radio']):active {
+  /* controls only: on long titles and text links a 2% shrink is a visible wobble */
+  button:not(:disabled, [data-row], [data-tile]):active, nav a:active, label:has(> input[type='radio']):active {
     transform: scale(0.98);
     transition-duration: var(--duration-micro);
   }
-  .page-in { animation: rise var(--duration-slow) var(--ease-smooth-out) backwards; }
+  .page-in { animation: rise var(--duration-fast) var(--ease-smooth-out) backwards; }
   /* browsers without this just show the section */
   @supports (animation-timeline: view()) {
     .reveal {
-      animation: rise linear both;
+      /* fade only: moving text in step with the scroll makes it shake */
+      animation: fade linear both;
       animation-timeline: view();
       animation-range: entry 0 entry 64px; /* fixed, so tall sections do not stay faded */
     }
@@ -137,8 +148,112 @@
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important; /* or a looping animation flickers */
   }
+  .beam-flow { stroke-dasharray: none; }
 }
+
+/* Repo map lens. --x and --y are layout units, and the map is 100 units wide, so 1 unit is 1cqw. */
+/* not inherited: changing them on every pointer move must not restyle hundreds of tiles */
+@property --x { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --y { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --open { syntax: '<number>'; inherits: false; initial-value: 1; }
+.lens-map {
+  container-type: inline-size;
+  touch-action: pan-y;
+}
+.lens, .lens-ring, .lens-dot {
+  position: absolute;
+  pointer-events: none;
+  transition: --open var(--duration-fast) var(--ease-smooth-out);
+}
+.lens-rest { display: none; }
+.lens-live { display: contents; }
+.lens-rest, .lens-live > * { animation: fade var(--duration-quick) var(--ease-smooth-out); }
+@media (hover: hover) {
+  .lens-map, .lens-map * { cursor: none; }
+  /* Only while the cursor or keyboard focus is on the map. It closes like an iris: fading would show the zoomed and normal tiles at once and drop the frost. */
+  .lens-map:not(:hover, :has(:focus-visible)) :is(.lens, .lens-ring, .lens-dot) {
+    --open: 0;
+    transition-duration: var(--duration-quick);
+  }
+  .lens-map:not(:hover, :has(:focus-visible)) + .lens-info .lens-rest { display: inline; }
+  .lens-map:not(:hover, :has(:focus-visible)) + .lens-info .lens-live { display: none; }
+}
+.lens {
+  inset: 0;
+  background: var(--surface);
+  clip-path: circle(calc(var(--r) * var(--open)) at calc(var(--x) * 1cqw) calc(var(--y) * 1cqw));
+}
+.lens-zoom {
+  position: absolute;
+  inset: 0;
+  transform-origin: calc(var(--x) * 1cqw) calc(var(--y) * 1cqw);
+  transform: scale(var(--zoom));
+}
+.lens-ring {
+  left: 0;
+  top: 0;
+  width: calc(var(--r) * 2);
+  height: calc(var(--r) * 2);
+  /* made from the theme's own ink and surface, so the edge stays soft but clear in light and dark */
+  border: 2.5px solid var(--lens-rim);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, white 16%, transparent), inset 0 0 6px 1px color-mix(in srgb, var(--surface) 35%, transparent), var(--lens-outer);
+  border-radius: 50%;
+  transform: translate(calc(var(--x) * 1cqw - var(--r)), calc(var(--y) * 1cqw - var(--r))) scale(var(--open));
+}
+/* the mask keeps the frost to a thin band just inside the border */
+.lens-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, white 2%, transparent);
+  backdrop-filter: blur(1.2px);
+  mask: radial-gradient(closest-side, transparent calc(100% - 9px), black calc(100% - 4px));
+}
+/* the bg ring keeps the dot visible on a tile of its own colour */
+.lens-dot {
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 7px color-mix(in srgb, var(--dot) 40%, transparent);
+  transform: translate(calc(var(--x) * 1cqw), calc(var(--y) * 1cqw)) scale(var(--open));
+  transition: background-color var(--duration-quick) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out), --open var(--duration-fast) var(--ease-smooth-out);
+}
+
+/* browsers without corner-shape show plain rounded corners */
+.tile {
+  border-radius: 10px;
+  corner-shape: squircle;
+}
+
+/* Engine beams. Each wire has pathLength 100, so the moving piece is 16% of its length. */
+.beam {
+  fill: none;
+  stroke: color-mix(in srgb, var(--ink) 16%, transparent);
+  transition: stroke var(--duration-slow) var(--ease-smooth-out), stroke-width var(--duration-slow) var(--ease-smooth-out);
+}
+.beam[data-state='done'] { stroke: color-mix(in srgb, var(--data) 45%, transparent); }
+.beam-flow {
+  fill: none;
+  stroke: var(--data);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 16 84;
+  animation: beam 1.6s linear infinite;
+  transition: opacity var(--duration-slow) var(--ease-smooth-out);
+}
+@keyframes beam {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* a theme change is one instant swap; otherwise controls fade behind the page */
+.theme-swap * { transition: none !important; }
 
 /* two logo files, one per theme */
 .logo-dark { display: none; }

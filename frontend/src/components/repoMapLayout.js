@@ -10,12 +10,12 @@ export function fileStats(files, findings) {
   const open = new Map();
   for (const f of findings) {
     if (f.status !== 'open') continue;
-    const entry = open.get(f.file) ?? { count: 0, worst: null };
+    const entry = open.get(f.file) ?? { count: 0, worst: f.severity };
     entry.count++;
-    if (entry.worst === null || SEVERITIES.indexOf(f.severity) < SEVERITIES.indexOf(entry.worst)) entry.worst = f.severity;
+    if (SEVERITIES.indexOf(f.severity) < SEVERITIES.indexOf(entry.worst)) entry.worst = f.severity;
     open.set(f.file, entry);
   }
-  return files.map(({ path, loc }) => ({ path, loc, count: open.get(path)?.count ?? 0, worst: open.get(path)?.worst ?? null }));
+  return files.map(({ path, loc }) => ({ path, loc, count: 0, worst: null, ...open.get(path) }));
 }
 
 // Squarified treemap (Bruls, Huizing & van Wijk). Items must be sorted largest first.
@@ -54,4 +54,12 @@ export function squarify(items, width, height) {
   }
   place(row);
   return out.map(({ area, ...tile }) => tile);
+}
+
+// What the lens at (x, y) sees: the tile under its centre and the totals for every tile it touches.
+export function lensSummary(tiles, x, y, radius) {
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const inside = tiles.filter((t) => (x - clamp(x, t.x, t.x + t.w)) ** 2 + (y - clamp(y, t.y, t.y + t.h)) ** 2 <= radius ** 2);
+  const under = tiles.find((t) => x >= t.x && x < t.x + t.w && y >= t.y && y < t.y + t.h);
+  return { under: under?.path ?? null, count: under?.count ?? 0, worst: under?.worst ?? null, files: inside.length, findings: inside.reduce((sum, t) => sum + t.count, 0) };
 }

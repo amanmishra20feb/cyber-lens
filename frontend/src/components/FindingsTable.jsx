@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { ENGINE_NAMES, OWASP_2025, SEVERITIES, STATUS_LABEL } from '../format.js';
+import { ENGINE_NAMES, FINDING_STATUS_TEXT, OWASP_2025, SEVERITIES, SEVERITY_TEXT } from '../format.js';
 import { FindingDrawer } from './FindingDrawer.jsx';
 import { Severity } from './Severity.jsx';
 
 const FILTERS = {
-  severity: { label: 'Severity', values: (f) => [f.severity], text: (v) => v[0].toUpperCase() + v.slice(1), order: SEVERITIES },
+  severity: { label: 'Severity', values: (f) => [f.severity], text: (v) => SEVERITY_TEXT[v], order: SEVERITIES },
   engine: { label: 'Engine', values: (f) => f.engines, text: (v) => ENGINE_NAMES[v] ?? v },
   owasp: { label: 'OWASP', values: (f) => f.owasp, text: (v) => `${v} ${OWASP_2025[v] ?? ''}` },
 };
@@ -71,7 +71,7 @@ export function Findings({ findings, file, onFile }) {
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div ref={tabs} className="relative flex gap-1" role="group" aria-label="Status">
           <span aria-hidden="true" className="absolute inset-y-0 left-0 rounded-lg bg-control" />
-          {Object.entries(STATUS_LABEL).map(([value, label]) => (
+          {Object.entries(FINDING_STATUS_TEXT).map(([value, label]) => (
             <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`relative h-9 rounded-lg px-3 ${tab === value ? 'font-medium text-ink' : 'text-muted hover:text-ink'}`}>
               {label} <span className="num">{count(value)}</span>
             </button>
@@ -99,7 +99,7 @@ export function Findings({ findings, file, onFile }) {
 
       {rows.length === 0 ? (
         <p className="mt-6 text-muted" role="status">
-          {filtered ? `No ${STATUS_LABEL[tab].toLowerCase()} findings match these filters. ` : `No ${STATUS_LABEL[tab].toLowerCase()} findings. `}
+          {filtered ? `No ${FINDING_STATUS_TEXT[tab].toLowerCase()} findings match these filters. ` : `No ${FINDING_STATUS_TEXT[tab].toLowerCase()} findings. `}
           {filtered && <button type="button" onClick={() => { setFilters(NO_FILTER); onFile(null); }} className="text-ink underline underline-offset-4">Clear filters</button>}
         </p>
       ) : (

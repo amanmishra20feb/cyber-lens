@@ -14,7 +14,20 @@ export const OWASP_2025 = {
 export const ENGINE_NAMES = { semgrep: 'Semgrep', gitleaks: 'Gitleaks', osv: 'OSV-Scanner' };
 export const SEVERITIES = ['critical', 'high', 'medium', 'low'];
 export const FINAL = ['done', 'failed', 'cancelled'];
-export const STATUS_TEXT = { queued: 'Queued', cloning: 'Cloning', scanning: 'Scanning', saving: 'Saving', done: 'Done', failed: 'Failed', cancelled: 'Cancelled' };
+export const SEVERITY_TEXT = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
+export const SCAN_STATUS_TEXT = { queued: 'Queued', cloning: 'Cloning', scanning: 'Scanning', saving: 'Saving', done: 'Done', failed: 'Failed', cancelled: 'Cancelled' };
+
+const ENGINE_ORDER = ['semgrep', 'gitleaks', 'osv']; // the order the server runs them in
+
+// One at a time, only the first unfinished engine is really running.
+export function engineStates(finished, oneAtATime) {
+  const next = ENGINE_ORDER.find((name) => !finished.some((e) => e.name === name));
+  return ENGINE_ORDER.map((name) => {
+    const result = finished.find((e) => e.name === name);
+    if (result) return { ...result, state: result.ok ? 'done' : 'failed' };
+    return { name, state: oneAtATime && name !== next ? 'waiting' : 'running' };
+  });
+}
 
 export const repoName = (url) => url.replace('https://github.com/', '');
 
@@ -31,5 +44,5 @@ export const duration = (a, b) => {
 };
 
 export const IGNORE_REASON_TEXT = { false_positive: 'False positive', acceptable_risk: 'Acceptable risk', no_time: 'No time to fix' };
-export const STATUS_LABEL = { open: 'Open', fixed: 'Fixed', ignored: 'Ignored' };
+export const FINDING_STATUS_TEXT = { open: 'Open', fixed: 'Fixed', ignored: 'Ignored' };
 

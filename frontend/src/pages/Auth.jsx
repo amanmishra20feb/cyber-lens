@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { Link, Navigate, useSearchParams } from 'react-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { useMe } from '../auth.jsx';
 import { Logo } from '../components/Logo.jsx';
@@ -12,27 +11,21 @@ export function AuthPage({ mode }) {
   const signup = mode === 'signup';
   const { data: user } = useMe();
   const [params] = useSearchParams();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   // only redirect to paths inside the app, never to another site
   const next = params.get('next')?.startsWith('/app') ? params.get('next') : '/app';
 
+  // once the user is known, the redirect below takes over
+  const auth = useMutation({
+    mutationFn: (body) => api(signup ? '/auth/signup' : '/auth/login', { body }),
+    onSuccess: ({ user }) => queryClient.setQueryData(['me'], user),
+  });
+
   if (user) return <Navigate to={next} replace />;
 
-  const submit = async (e) => {
+  const submit = (e) => {
     e.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      const { user } = await api(signup ? '/auth/signup' : '/auth/login', { body: Object.fromEntries(new FormData(e.currentTarget)) });
-      queryClient.setQueryData(['me'], user);
-      navigate(next, { replace: true });
-    } catch (err) {
-      setError(err.message);
-      setBusy(false);
-    }
+    auth.mutate(Object.fromEntries(new FormData(e.currentTarget)));
   };
 
   return (
@@ -60,9 +53,9 @@ export function AuthPage({ mode }) {
           <input name="password" type="password" required minLength={8} maxLength={72} autoComplete={signup ? 'new-password' : 'current-password'} aria-describedby={signup ? 'pw-hint' : undefined} className={field} />
           {signup && <span id="pw-hint" className="mt-1 block text-[14px] font-normal text-muted">At least 8 characters.</span>}
         </label>
-        {error && <p role="alert" className="text-sev-critical">{error}</p>}
-        <button disabled={busy} className="h-10 w-full rounded-lg bg-ink font-medium text-bg hover:opacity-90 disabled:opacity-60">
-          {busy ? (signup ? 'Creating account…' : 'Signing in…') : signup ? 'Create account' : 'Sign in'}
+        {auth.error && <p role="alert" className="text-sev-critical">{auth.error.message}</p>}
+        <button disabled={auth.isPending} className="h-10 w-full rounded-lg bg-ink font-medium text-bg hover:opacity-90 disabled:opacity-60">
+          {auth.isPending ? (signup ? 'Creating account…' : 'Signing in…') : signup ? 'Create account' : 'Sign in'}
         </button>
       </form>
       <p className="mt-6 text-center text-muted">
