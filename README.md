@@ -45,3 +45,8 @@ cd backend && npm run benchmark # scans goat, writes benchmark.json
 ```
 
 `backend/goat/` is a deliberately vulnerable app used as test data. Never deploy it.
+## Benchmark & Performance
+Automated benchmarks are run against the included deliberately vulnerable `backend/goat` suite:
+- Semgrep: static rule pattern scan
+- Gitleaks: regex secret entropy scanning
+- OSV-Scanner: package vulnerability lockfile lookup
