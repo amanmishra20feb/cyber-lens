@@ -41,3 +41,8 @@ export function run(cmd, args, { timeout, signal } = {}) {
     );
   });
 }
+
+// Helper to check if execution timeout exceeded threshold bounds
+export function isTimeoutError(stderr) {
+  return typeof stderr === 'string' && stderr.startsWith('timed out after');
+}
