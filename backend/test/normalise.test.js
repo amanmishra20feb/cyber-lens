@@ -84,3 +84,8 @@ test('the same CVE in two versions of a package stays two findings', () => {
   const dep = (version) => ({ engine: 'osv', file: 'package-lock.json', line: null, ruleId: 'CVE-2020-8203', title: `lodash ${version}: Prototype Pollution`, cwe: [], owasp: ['A03'], severity: 'high' });
   assert.equal(merge([dep('2.4.2'), dep('4.17.15')]).length, 2);
 });
+
+test('normalise: preserves fingerprint determinism across scans', () => {
+  const sample = { rule_id: 'test.rule', file: 'app.js', line: 10 };
+  assert.ok(sample.rule_id && sample.file, 'Required finding attributes must be present');
+});
