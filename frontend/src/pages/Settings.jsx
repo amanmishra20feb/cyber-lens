@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../api.js';
 import { useMe } from '../auth.jsx';
 import { PageTitle } from '../components/PageTitle.jsx';
 
@@ -10,11 +13,7 @@ const THEMES = [
 function Appearance() {
   const [theme, setTheme] = useState(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
   const choose = (value) => {
-    const root = document.documentElement;
-    root.classList.add('theme-swap');
-    root.dataset.theme = value;
-    void root.offsetWidth; // apply the new colours before transitions come back
-    root.classList.remove('theme-swap');
+    document.documentElement.dataset.theme = value;
     try { localStorage.setItem('theme', value); } catch { /* private mode: the choice just won't persist */ }
     setTheme(value);
   };
@@ -29,6 +28,50 @@ function Appearance() {
         </label>
       ))}
     </fieldset>
+  );
+}
+
+const button = 'h-9 rounded-lg px-4 font-medium hover:opacity-80 disabled:opacity-60';
+
+// both end the session, so the app forgets the user and goes to the sign-in page
+function useLeave(path, method) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: () => api(path, { method }),
+    onSuccess: () => {
+      queryClient.clear();
+      navigate('/login', { replace: true });
+    },
+  });
+}
+
+function SignOutEverywhere() {
+  const leave = useLeave('/auth/logout-all', 'POST');
+  return (
+    <>
+      <button type="button" onClick={() => leave.mutate()} disabled={leave.isPending} className={`${button} bg-control`}>
+        {leave.isPending ? 'Signing out…' : 'Sign out on every device'}
+      </button>
+      {leave.error && <p role="alert" className="mt-2 text-sev-critical">{leave.error.message}</p>}
+    </>
+  );
+}
+
+// Asks once before deleting; "Cancel" takes focus, so pressing Enter twice does not delete.
+function DeleteAccount() {
+  const [asking, setAsking] = useState(false);
+  const remove = useLeave('/auth/me', 'DELETE');
+  if (!asking) return <button type="button" onClick={() => setAsking(true)} className={`${button} bg-control`}>Delete account</button>;
+  return (
+    <>
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span>Delete your account and all your scans?</span>
+        <button type="button" onClick={() => remove.mutate()} disabled={remove.isPending} className={`${button} bg-sev-critical text-bg`}>{remove.isPending ? 'Deleting…' : 'Delete'}</button>
+        <button type="button" autoFocus onClick={() => setAsking(false)} disabled={remove.isPending} className={`${button} bg-control`}>Cancel</button>
+      </p>
+      {remove.error && <p role="alert" className="mt-2 text-sev-critical">{remove.error.message}</p>}
+    </>
   );
 }
 
@@ -63,6 +106,12 @@ export function SettingsPage() {
               </div>
             ))}
           </dl>
+        </Section>
+        <Section title="Sessions" description="Signed in on a shared or lost device? This signs you out on every device, this one too.">
+          <SignOutEverywhere />
+        </Section>
+        <Section title="Delete account" description="Removes your account, every scan and every finding. This cannot be undone.">
+          <DeleteAccount />
         </Section>
       </div>
     </>
