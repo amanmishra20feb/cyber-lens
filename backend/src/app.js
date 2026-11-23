@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.js';
+import googleRoutes from './routes/google.js';
 import scanRoutes from './routes/scans.js';
 import findingRoutes from './routes/findings.js';
 
@@ -16,6 +17,7 @@ app.use(cookieParser());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', googleRoutes);
 app.use('/api/scans', scanRoutes);
 app.use('/api/findings', findingRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));
