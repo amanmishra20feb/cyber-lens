@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-22T15:18:57.278Z",
+  "engines": [
+    {
+      "name": "semgrep",
+      "ok": true,
+      "count": 18,
+      "ms": 3954
+    },
+    {
+      "name": "gitleaks",
+      "ok": true,
+      "count": 1,
+      "ms": 37
+    },
+    {
+      "name": "osv",
+      "ok": true,
+      "count": 8,
+      "ms": 1367
+    }
+  ],
+  "planted": 19,
+  "found": 19,
+  "missed": [],
+  "falseAlarms": [],
+  "totalFindings": 26
+}
