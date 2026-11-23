@@ -15,18 +15,19 @@ export const COOKIE = 'cl_token';
 export const cookieOptions = { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' };
 
 export function setSession(res, user) {
-  const token = jwt.sign({ sub: user.id }, SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ sub: user.id, v: user.tokenVersion }, SECRET, { expiresIn: '7d' });
   res.cookie(COOKIE, token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
 }
 
 export async function requireUser(req, res, next) {
-  let sub;
+  let sub, v;
   try {
-    ({ sub } = jwt.verify(req.cookies?.[COOKIE] ?? '', SECRET));
+    ({ sub, v } = jwt.verify(req.cookies?.[COOKIE] ?? '', SECRET));
   } catch {
     // missing, expired or forged: treated as signed out
   }
   [req.user] = isId(sub) ? await sql(`SELECT ${USER_COLUMNS} FROM users WHERE id = $1`, [sub]) : [];
-  if (!req.user) return res.status(401).json({ error: 'Please sign in.' });
+  // an old token stops working once the user signs out everywhere
+  if (!req.user || req.user.tokenVersion !== v) return res.status(401).json({ error: 'Please sign in.' });
   next();
 }
