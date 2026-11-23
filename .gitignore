@@ -4,10 +4,3 @@ dist/
 .env.local
 *.log
 .DS_Store
-
-# Working notes: kept locally, not published
-PLAN.md
-DESIGN.md
-PRODUCT.md
-STACK.md
-.taste-skill/
