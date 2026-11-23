@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import bcrypt from 'bcryptjs';
 
 // never run these against the real database
 if (process.env.TEST_DATABASE_URL && process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) throw new Error('TEST_DATABASE_URL is the same as DATABASE_URL. Point it at a separate test database (a Neon branch).');
@@ -119,7 +120,6 @@ test('scans that failed before any engine ran do not use up the daily limit', as
   await call(`/scans/${res.body.scan.id}/cancel`, { cookie: fred.cookie, method: 'POST' });
 });
 
-// reads the event stream until it closes and returns the statuses it sent
 test('a scan can be read by its owner only, with oneAtATime for the progress view', async () => {
   const fay = await signup('fay@example.com');
   const gus = await signup('gus@example.com');
@@ -229,4 +229,32 @@ test('with STATIC_DIR the API also serves the app: any page gives index.html, un
   assert.equal(missing.status, 404);
   assert.equal((await missing.json()).error, 'Not found.');
   assert.equal((await call('/health')).body.ok, true);
+});
+
+// made straight in the database, because the sign-up limit (20 a minute) is used up by the tests above
+const addUser = async (email) =>
+  (await sql('INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id', [email, 'Test', await bcrypt.hash('correct horse', 4)]))[0];
+const login = (email) => call('/auth/login', { body: { email, password: 'correct horse' } });
+
+test('sign out everywhere ends every session of the account', async () => {
+  await addUser('many@example.com');
+  const laptop = await login('many@example.com');
+  const phone = await login('many@example.com');
+  assert.equal((await call('/auth/logout-all', { cookie: laptop.cookie, method: 'POST' })).status, 204);
+  assert.equal((await call('/auth/me', { cookie: phone.cookie })).status, 401);
+  assert.equal((await call('/auth/me', { cookie: laptop.cookie })).status, 401);
+  assert.equal((await call('/auth/me', { cookie: (await login('many@example.com')).cookie })).status, 200);
+});
+
+test('deleting the account removes its scans and findings and signs it out', async () => {
+  const { id } = await addUser('leaving@example.com');
+  const me = await login('leaving@example.com');
+  const scan = await addScan(id);
+  await addFinding(scan, { fingerprint: 'f1' });
+  assert.equal((await call('/auth/me', { cookie: me.cookie, method: 'DELETE' })).status, 204);
+  assert.equal((await call('/auth/me', { cookie: me.cookie })).status, 401);
+  assert.equal(await countRows('scans WHERE user_id = $1', [id]), 0);
+  assert.equal(await countRows('findings WHERE scan_id = $1', [scan.id]), 0);
+  assert.equal((await login('leaving@example.com')).status, 401);
+  assert.equal((await call('/auth/me', { method: 'DELETE' })).status, 401);
 });

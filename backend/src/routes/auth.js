@@ -2,8 +2,9 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { sql } from '../db.js';
-import { USER_COLUMNS } from '../models.js';
+import { NOT_FINAL, USER_COLUMNS } from '../models.js';
 import { COOKIE, cookieOptions, setSession, requireUser } from '../auth.js';
+import { cancel } from '../scanner/worker.js';
 
 const router = Router();
 const limiter = (max, keyGenerator) =>
@@ -41,6 +42,7 @@ router.post('/login', loginLimit, async (req, res) => {
   const { email, password } = req.body ?? {};
   const [found] = await sql(`SELECT ${USER_COLUMNS}, password_hash FROM users WHERE email = $1`, [String(email ?? '').trim().toLowerCase()]);
   const ok = await bcrypt.compare(String(password ?? ''), found?.passwordHash ?? DUMMY_HASH);
+  if (found && !found.passwordHash) return res.status(401).json({ error: 'This account signs in with Google. Use Continue with Google.' });
   if (!found || !ok) return res.status(401).json({ error: 'Email or password is wrong.' });
   const { passwordHash, ...user } = found;
   setSession(res, user);
@@ -52,6 +54,21 @@ router.post('/logout', (req, res) => {
   res.status(204).end();
 });
 
+router.post('/logout-all', requireUser, async (req, res) => {
+  await sql('UPDATE users SET token_version = token_version + 1 WHERE id = $1', [req.user.id]);
+  res.clearCookie(COOKIE, cookieOptions);
+  res.status(204).end();
+});
+
 router.get('/me', requireUser, (req, res) => res.json({ user: req.user }));
+
+// Scans and findings go with the account (ON DELETE CASCADE); running scans are stopped first.
+router.delete('/me', requireUser, async (req, res) => {
+  const running = await sql(`SELECT id FROM scans WHERE user_id = $1 AND ${NOT_FINAL}`, [req.user.id]);
+  running.forEach((scan) => cancel(scan.id));
+  await sql('DELETE FROM users WHERE id = $1', [req.user.id]);
+  res.clearCookie(COOKIE, cookieOptions);
+  res.status(204).end();
+});
 
 export default router;
