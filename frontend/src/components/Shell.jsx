@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { useMe } from '../auth.jsx';
@@ -22,18 +22,20 @@ export function Shell() {
     queryClient.clear();
     navigate('/login');
   };
-  const link = ({ isActive }) => `block rounded-lg px-3 py-2 ${isActive ? 'bg-control font-medium text-ink' : 'text-muted hover:bg-ink/5 hover:text-ink'}`;
+  const link = ({ isActive }) => `block whitespace-nowrap rounded-lg px-3 py-2 ${isActive ? 'bg-control font-medium text-ink' : 'text-muted hover:bg-ink/5 hover:text-ink'}`;
 
   return (
     <div className="md:grid md:min-h-dvh md:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]" style={{ '--sidebar-w': `${width}px` }}>
       {/* the content sticks to the viewport so the account row never scrolls away */}
       <aside className="relative border-b border-rule bg-sidebar md:border-b-0 md:border-r">
         <div className="flex items-center gap-4 px-4 py-3 md:sticky md:top-0 md:h-dvh md:flex-col md:items-stretch md:px-3 md:pb-3 md:pt-6">
-          <div className="md:px-3">
+          <Link to="/" aria-label="Cyberlens home" className="rounded-md md:mx-3 md:self-start">
             <Logo className="h-9 md:h-10" />
-          </div>
-          <nav className="ml-auto flex gap-1 md:ml-0 md:mt-8 md:flex-col" aria-label="Main">
-            <NavLink to="/app" end className={link}>Scans</NavLink>
+          </Link>
+          <nav className="ml-auto flex gap-1 md:ml-0 md:mt-8 md:flex-col md:gap-2" aria-label="Main">
+            <NavLink to="/app" end className={link}>New scan</NavLink>
+            {/* a scan opened from the list still belongs to History */}
+            <NavLink to="/app/history" className={({ isActive }) => link({ isActive: isActive || pathname.startsWith('/app/scans/') })}>History</NavLink>
           </nav>
           <div className="min-w-0 md:-ml-3 md:-mr-3 md:mt-auto md:border-t md:border-rule md:px-3 md:pt-3">
             <UserMenu user={user} onSignOut={signOut} />

@@ -46,3 +46,9 @@ export const duration = (a, b) => {
 export const IGNORE_REASON_TEXT = { false_positive: 'False positive', acceptable_risk: 'Acceptable risk', no_time: 'No time to fix' };
 export const FINDING_STATUS_TEXT = { open: 'Open', fixed: 'Fixed', ignored: 'Ignored' };
 
+// "1 high, 4 medium" for a finished scan, the status for any other
+export const summary = (scan) => {
+  if (scan.status !== 'done') return SCAN_STATUS_TEXT[scan.status];
+  const parts = SEVERITIES.filter((s) => scan.counts[s]).map((s) => `${scan.counts[s]} ${SEVERITY_TEXT[s].toLowerCase()}`);
+  return parts.length ? parts.join(', ') : 'No findings';
+};
