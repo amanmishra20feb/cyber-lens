@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ENGINE_NAMES, FINDING_STATUS_TEXT, OWASP_2025, SEVERITIES, SEVERITY_TEXT } from '../format.js';
 import { FindingDrawer } from './FindingDrawer.jsx';
 import { Severity } from './Severity.jsx';
@@ -9,8 +9,7 @@ const FILTERS = {
   owasp: { label: 'OWASP', values: (f) => f.owasp, text: (v) => `${v} ${OWASP_2025[v] ?? ''}` },
 };
 const NO_FILTER = { severity: '', engine: '', owasp: '' };
-// Rows highlight as one rounded pill. The divider is a pseudo-element, because a border would curve at the rounded corners.
-const cell = 'relative py-3 align-top transition-colors before:transition-opacity before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-rule group-hover:bg-raised group-hover:before:opacity-0 group-focus-within:bg-raised group-focus-within:before:opacity-0';
+const cell = 'border-t border-rule py-3 align-top group-hover:bg-raised group-focus-within:bg-raised';
 
 // The whole list is already loaded, so filtering happens here. Tab counts follow the filters.
 export function Findings({ findings, file, onFile }) {
@@ -19,22 +18,6 @@ export function Findings({ findings, file, onFile }) {
   const [openId, setOpenId] = useState(null);
   const openAt = useRef(0); // row position when the drawer opened
   const table = useRef(null);
-  const tabs = useRef(null);
-
-  // the highlight is measured because tab widths change with their counts
-  useLayoutEffect(() => {
-    const pill = tabs.current.firstChild;
-    const place = () => {
-      const active = tabs.current?.querySelector('[aria-pressed=true]');
-      if (!active) return;
-      pill.style.width = `${active.offsetWidth}px`;
-      pill.style.transform = `translateX(${active.offsetLeft}px)`;
-    };
-    place();
-    void pill.offsetWidth; // so the first position does not animate
-    pill.classList.add('tab-slide');
-    document.fonts.ready.then(place);
-  });
 
   const matching = findings.filter((f) => (!file || f.file === file) && Object.entries(FILTERS).every(([k, d]) => !filters[k] || d.values(f).includes(filters[k])));
   const rows = matching.filter((f) => f.status === tab);
@@ -69,10 +52,9 @@ export function Findings({ findings, file, onFile }) {
   return (
     <>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div ref={tabs} className="relative flex gap-1" role="group" aria-label="Status">
-          <span aria-hidden="true" className="absolute inset-y-0 left-0 rounded-lg bg-control" />
+        <div className="flex gap-1" role="group" aria-label="Status">
           {Object.entries(FINDING_STATUS_TEXT).map(([value, label]) => (
-            <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`relative h-9 rounded-lg px-3 ${tab === value ? 'font-medium text-ink' : 'text-muted hover:text-ink'}`}>
+            <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)} className={`h-9 rounded-lg px-3 ${tab === value ? 'bg-control font-medium text-ink' : 'text-muted hover:text-ink'}`}>
               {label} <span className="num">{count(value)}</span>
             </button>
           ))}
@@ -103,7 +85,7 @@ export function Findings({ findings, file, onFile }) {
           {filtered && <button type="button" onClick={() => { setFilters(NO_FILTER); onFile(null); }} className="text-ink underline underline-offset-4">Clear filters</button>}
         </p>
       ) : (
-        <table className="mt-4 w-full table-fixed border-separate border-spacing-0 text-left">
+        <table className="mt-4 w-full table-fixed text-left">
           <thead className="text-[14px] text-muted">
             <tr>
               <th scope="col" className="w-28 py-2 pl-3 pr-4 font-normal">Severity</th>
@@ -117,13 +99,13 @@ export function Findings({ findings, file, onFile }) {
               const where = `${f.file}${f.line ? `:${f.line}` : ''}`;
               return (
                 <tr key={f.id} onClick={() => openFinding(f.id, index)} className="group cursor-pointer">
-                  <td className={`${cell} rounded-l-xl pl-3 pr-4 before:left-3`}><Severity level={f.severity} /></td>
-                  <td className={`${cell} pr-4 max-md:rounded-r-xl max-md:pr-3 max-md:before:right-3`}>
+                  <td className={`${cell} pl-3 pr-4`}><Severity level={f.severity} /></td>
+                  <td className={`${cell} pr-4 max-md:pr-3`}>
                     <button type="button" data-row className="text-left font-medium hover:underline underline-offset-4">{f.title}</button>
                     <span className="mt-1 block truncate text-muted md:hidden">{where}</span>
                   </td>
                   <td className={`${cell} hidden truncate pr-4 text-muted md:table-cell`} title={where}>{where}</td>
-                  <td className={`${cell} num hidden pr-3 text-muted md:table-cell md:rounded-r-xl md:before:right-3`}>{f.owasp.join(', ') || '–'}</td>
+                  <td className={`${cell} num hidden pr-3 text-muted md:table-cell`}>{f.owasp.join(', ') || '–'}</td>
                 </tr>
               );
             })}

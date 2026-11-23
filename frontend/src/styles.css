@@ -3,7 +3,7 @@
 @import '@fontsource/hanken-grotesk/500.css';
 @import '@fontsource/jetbrains-mono/400.css';
 
-/* Design tokens. Neutral greys in both themes: --bg is the page, --sidebar the left column. Contrast checked, see DESIGN.md. */
+/* Design tokens. Neutral greys in both themes: --bg is the page, --sidebar the left column. Contrast is checked by frontend/test/contrast.test.js. */
 :root {
   --bg: #ffffff;
   --sidebar: #ebebeb;
@@ -66,7 +66,8 @@
 
 @layer base {
   /* the page does not shift sideways when its length changes */
-  html { scrollbar-gutter: stable; }
+  html { scrollbar-gutter: stable; scrollbar-color: var(--control) transparent; scroll-padding-top: 6rem; }
+  ::selection { background: var(--ink); color: var(--bg); }
   body {
     background: var(--bg);
     color: var(--ink);
@@ -111,19 +112,10 @@
   .pop { opacity: 0; transform: scale(0.97); }
 }
 
-.tab-slide { transition: transform var(--duration-fast) var(--ease-smooth-out), width var(--duration-fast) var(--ease-smooth-out); }
-
-/* display and overlay keep the dialog visible while it slides out */
-.drawer, .drawer::backdrop {
-  transition: transform var(--duration-quick) var(--ease-smooth-out), opacity var(--duration-quick) var(--ease-smooth-out), display var(--duration-quick) allow-discrete, overlay var(--duration-quick) allow-discrete;
-}
-.drawer { transform: translateX(100%); }
-.drawer::backdrop { opacity: 0; }
-.drawer[open] { transform: none; transition-duration: var(--duration-fast); }
-.drawer[open]::backdrop { opacity: 1; transition-duration: var(--duration-fast); }
-@starting-style {
-  .drawer[open] { transform: translateX(100%); }
-  .drawer[open]::backdrop { opacity: 0; }
+/* the finding drawer slides in from the right */
+.drawer[open] { animation: drawer-in var(--duration-fast) var(--ease-smooth-out); }
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -133,6 +125,7 @@
     transition-duration: var(--duration-micro);
   }
   .page-in { animation: rise var(--duration-fast) var(--ease-smooth-out) backwards; }
+  html { scroll-behavior: smooth; }
   /* browsers without this just show the section */
   @supports (animation-timeline: view()) {
     .reveal {
@@ -251,9 +244,6 @@
   from { stroke-dashoffset: 100; }
   to { stroke-dashoffset: 0; }
 }
-
-/* a theme change is one instant swap; otherwise controls fade behind the page */
-.theme-swap * { transition: none !important; }
 
 /* two logo files, one per theme */
 .logo-dark { display: none; }

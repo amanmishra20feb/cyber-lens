@@ -29,10 +29,8 @@ export function FindingDrawer({ finding: f, onClose }) {
   const dialog = useRef(null);
   const queryClient = useQueryClient();
   const [reason, setReason] = useState('');
-  const leaving = useRef();
   useEffect(() => {
     if (!dialog.current.open) dialog.current.showModal();
-    return () => clearTimeout(leaving.current);
   }, []);
 
   const triage = useMutation({
@@ -46,7 +44,7 @@ export function FindingDrawer({ finding: f, onClose }) {
   return (
     <dialog
       ref={dialog}
-      onClose={() => { leaving.current = setTimeout(onClose, 150); }} // wait for the slide-out
+      onClose={onClose}
       onClick={(e) => e.target === dialog.current && close()} // a click on the backdrop closes it
       aria-labelledby="finding-title"
       className="drawer m-0 ml-auto h-dvh max-h-none w-full max-w-[600px] bg-bg p-0 text-ink backdrop:bg-black/40 md:border-l md:border-rule"

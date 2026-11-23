@@ -63,7 +63,3 @@ export function lensSummary(tiles, x, y, radius) {
   const under = tiles.find((t) => x >= t.x && x < t.x + t.w && y >= t.y && y < t.y + t.h);
   return { under: under?.path ?? null, count: under?.count ?? 0, worst: under?.worst ?? null, files: inside.length, findings: inside.reduce((sum, t) => sum + t.count, 0) };
 }
-// Accessibility helper: computes high-contrast focus rings for keyboard navigation
-export function tileAccessibilityRing(severity) {
-  return severity ? `ring-2 ring-offset-1 ring-sev-${severity}` : 'focus:ring-1 focus:ring-slate-400';
-}
