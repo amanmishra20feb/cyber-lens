@@ -1,0 +1,19 @@
+rules:
+  - id: cyberlens.express-without-helmet
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      This Express app never uses helmet, so it sends no security headers (no Content-Security-Policy,
+      no protection against clickjacking or MIME sniffing). Add `app.use(helmet())` right after creating the app.
+    patterns:
+      - pattern: $APP = express()
+      - pattern-not-inside: |
+          $APP = express();
+          ...
+          $APP.use(..., helmet(...), ...);
+      - focus-metavariable: $APP
+    metadata:
+      category: security
+      cwe: ["CWE-693: Protection Mechanism Failure"]
+      owasp: ["A02:2025 - Security Misconfiguration"]
+      confidence: MEDIUM

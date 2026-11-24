@@ -7,7 +7,7 @@ const mysql = require('mysql');
 const config = require('./config');
 const users = require('./users');
 
-const app = express();
+const app = express(); // VULN: CWE-693 A02
 const db = mysql.createConnection(config.db);
 
 app.get('/user', (req, res) => {
