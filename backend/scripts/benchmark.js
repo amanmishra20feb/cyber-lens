@@ -1,12 +1,12 @@
 // npm run benchmark: scans backend/goat and checks the results against the
-// "// VULN: CWE-x Axx" and "// SAFE" markers in its code. Writes ../benchmark.json.
+// "// VULN: CWE-x Axx" and "// SAFE" markers in its code. Writes frontend/src/landing/benchmark.json for the landing page.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanDirectory } from '../src/scanner/scan.js';
 
 const GOAT = fileURLToPath(new URL('../goat', import.meta.url));
-const OUT = fileURLToPath(new URL('../../benchmark.json', import.meta.url));
+const OUT = fileURLToPath(new URL('../../frontend/src/landing/benchmark.json', import.meta.url));
 
 async function markers() {
   const vulns = [];

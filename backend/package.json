@@ -9,7 +9,8 @@
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "start": "node --env-file-if-exists=.env src/server.js",
     "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
-    "benchmark": "node scripts/benchmark.js"
+    "benchmark": "node scripts/benchmark.js",
+    "record-scan": "node scripts/record-scan.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
