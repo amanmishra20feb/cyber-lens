@@ -200,12 +200,12 @@ export function LandingPage() {
       </div>
 
       <footer className={`${gap} bg-ink text-bg`}>
-        <div className="mx-auto max-w-[1200px] px-4 pt-16 md:pt-24">
+        <div className="mx-auto max-w-[1200px] px-4 pt-8 md:pt-10">
           <h2 className="reveal text-[clamp(32px,5vw,56px)] leading-[1.05] font-medium tracking-[-0.02em]">How does your repo look?</h2>
           <p className="reveal mt-3 max-w-[46ch] text-bg/70">The NodeGoat scan above took {scan.seconds} seconds. Paste a link and find out.</p>
           <div className="mt-8 max-w-[640px]"><ScanForm id="repo-bottom" inverse /></div>
-          <div className="mt-16 md:mt-20">
-            <p className="reveal flex items-baseline justify-between pb-8 text-[length:clamp(40px,6vw,76px)] leading-none font-medium tracking-[-0.03em]">
+          <div className="mt-12 md:mt-14">
+            <p className="reveal flex items-baseline justify-between pb-6 text-[length:clamp(36px,5vw,60px)] leading-none font-medium tracking-[-0.03em]">
               <span>Cyberlens</span>
               <span className="text-bg/45">2026</span>
             </p>
