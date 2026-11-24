@@ -7,6 +7,7 @@ import { Findings } from '../components/FindingsTable.jsx';
 import { PageTitle } from '../components/PageTitle.jsx';
 import { RepoMap } from '../components/RepoMap.jsx';
 import { Severity } from '../components/Severity.jsx';
+import { Coverage } from '../components/Coverage.jsx';
 import { ENGINE_NAMES, FINAL, SEVERITIES, SCAN_STATUS_TEXT, duration, repoName } from '../format.js';
 
 const STAGES = ['cloning', 'scanning', 'saving'];
@@ -31,6 +32,26 @@ function Progress({ scan }) {
   );
 }
 
+function ScanAgain({ scan }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const again = useMutation({
+    mutationFn: () => api('/scans', { body: { repoUrl: scan.repoUrl, branch: scan.branch ?? '' } }),
+    onSuccess: ({ scan: next }) => {
+      queryClient.invalidateQueries({ queryKey: ['scans'] });
+      navigate(`/app/scans/${next.id}`);
+    },
+  });
+  return (
+    <div className="mt-4">
+      <button type="button" onClick={() => again.mutate()} disabled={again.isPending} className="h-9 rounded-lg bg-ink px-4 font-medium text-bg hover:opacity-90 disabled:opacity-60">
+        {again.isPending ? 'Starting…' : 'Scan again'}
+      </button>
+      {again.error && <p role="alert" className="mt-2 text-sev-critical">{again.error.message}</p>}
+    </div>
+  );
+}
+
 // Asks once before deleting; "Cancel" takes focus, so pressing Enter twice does not delete.
 function DeleteScan({ id }) {
   const navigate = useNavigate();
@@ -40,7 +61,7 @@ function DeleteScan({ id }) {
     mutationFn: () => api(`/scans/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scans'] });
-      navigate('/app', { replace: true });
+      navigate('/app/history', { replace: true });
     },
   });
   const button = 'h-9 rounded-lg px-4 font-medium hover:opacity-80 disabled:opacity-60';
@@ -68,14 +89,14 @@ export function ScanResultPage() {
     refetchInterval: (q) => (q.state.data && !FINAL.includes(q.state.data.status) ? 2000 : false),
   });
   const scan = scanQuery.data;
-  const cancel = useMutation({ mutationFn: () => api(`/scans/${id}/cancel`, { method: 'POST' }) }); // the new status arrives through the stream
+  const cancel = useMutation({ mutationFn: () => api(`/scans/${id}/cancel`, { method: 'POST' }) }); // the next 2 s check shows the new status
   const findingsQuery = useQuery({
     queryKey: ['findings', id],
     queryFn: () => api(`/scans/${id}/findings`).then((d) => d.findings),
     enabled: scan?.status === 'done',
   });
 
-  if (scanQuery.error) return <p role="alert" className="text-sev-critical">{scanQuery.error.message} <Link to="/app" className="text-ink underline">Back to scans</Link></p>;
+  if (scanQuery.error) return <p role="alert" className="text-sev-critical">{scanQuery.error.message} <Link to="/app/history" className="text-ink underline">Back to history</Link></p>;
   if (!scan) return <p className="text-muted">Loading scan…</p>;
 
   const failedEngines = scan.engines.filter((e) => !e.ok);
@@ -86,13 +107,14 @@ export function ScanResultPage() {
   return (
     <>
       <PageTitle>{repoName(scan.repoUrl)}</PageTitle>
-      <Link to="/app" className="text-muted hover:text-ink">Scans</Link>
+      <Link to="/app/history" className="text-muted hover:text-ink">History</Link>
       <h1 className="mt-2 text-[28px] font-medium break-all">
         <a href={scan.repoUrl} target="_blank" rel="noreferrer" className="hover:underline underline-offset-4">{repoName(scan.repoUrl)}</a>
       </h1>
       <p className="mt-1 text-muted">
         {[scan.branch ?? 'Default branch', scan.commit && `commit ${scan.commit.slice(0, 7)}`, SCAN_STATUS_TEXT[scan.status], scan.finishedAt && scan.startedAt && `took ${duration(scan.startedAt, scan.finishedAt)}`].filter(Boolean).join(', ')}
       </p>
+      {FINAL.includes(scan.status) && <ScanAgain scan={scan} />}
 
       {!FINAL.includes(scan.status) && (
         <>
@@ -145,6 +167,7 @@ export function ScanResultPage() {
               {findings.length > 0 && <Findings findings={findings} file={file} onFile={setFile} />}
             </section>
           )}
+          {findings && <Coverage findings={findings} />}
         </>
       )}
 
