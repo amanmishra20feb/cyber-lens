@@ -33,7 +33,7 @@ export function parseGitleaks(json, dir) {
     engine: 'gitleaks',
     ruleId: `gitleaks.${r.RuleID}`,
     title: `Secret in code: ${r.RuleID.replace(/-/g, ' ')}`,
-    message: `${r.Description} Anyone who can read this repo can use it. Revoke it, then load it from an environment variable.`,
+    message: `${r.Description} Anyone who can read this repo can use it. Revoke it, then load it from an environment variable. If it is a fake value (for example in a test), add the comment gitleaks:allow on that line.`,
     severity: 'critical',
     cwe: ['CWE-798'],
     owasp: ['A07'],

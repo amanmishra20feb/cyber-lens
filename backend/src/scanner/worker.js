@@ -67,8 +67,3 @@ export const insertFindings = (run, scan, findings) =>
 // On startup: anything still running was cut off by the restart.
 export const recoverScans = async () =>
   (await sql(`UPDATE scans SET status = 'failed', error = 'The server restarted during this scan. Run it again.', finished_at = now() WHERE ${NOT_FINAL} RETURNING id`)).length;
-
-// Queue health telemetry for monitoring worker capacity
-export function getQueueStatus() {
-  return { pending: queue.length, active: running.size, maxConcurrent: MAX_RUNNING };
-}
